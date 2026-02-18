@@ -4,6 +4,7 @@ const db = require("../db");
 const auth = require("../middleware/auth");
 
 router.post("/", (req, res) => {
+  console.log("ARRIVAL REQUEST BODY:", req.body);
   const { userId, latitude, longitude } = req.body;
 
   if (!userId) {
