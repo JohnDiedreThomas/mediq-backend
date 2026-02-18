@@ -50,28 +50,52 @@ router.post("/", (req, res) => {
         longitude
       );
 
-      // 🧠 INSIDE CLINIC
       if (dClinic <= CLINIC.radius) {
 
-        // reset outside timer
         db.query(
           "UPDATE users SET outside_since = NULL WHERE id=?",
           [userId]
         );
 
-        // ✅ ONLY affect TODAY approved appointments
         db.query(
           `UPDATE appointments
            SET arrived = 1
            WHERE user_id = ?
            AND status = 'approved'
-           AND DATE(date) = CURDATE()`,
-          [userId]
+           AND DATE(date) = CURDATE()
+           AND arrived = 0`,
+          [userId],
+          (err, result) => {
+
+            // Only notify if arrival changed
+            if (result.affectedRows > 0) {
+
+              db.query(
+                "SELECT id FROM users WHERE role='staff'",
+                (err, staffRows) => {
+
+                  staffRows.forEach(staff => {
+                    db.query(
+                      `INSERT INTO notifications (user_id, title, message)
+                       VALUES (?, ?, ?)`,
+                      [
+                        staff.id,
+                        "Patient Arrived",
+                        "A patient has arrived at the clinic"
+                      ]
+                    );
+                  });
+
+                }
+              );
+
+            }
+
+          }
         );
 
       } else {
 
-        // start outside timer if not already started
         db.query(
           `UPDATE users
            SET outside_since = IFNULL(outside_since, NOW())
@@ -126,7 +150,6 @@ router.get("/nearby", (req, res) => {
           p.longitude
         );
 
-        // ⏳ grace period logic (15s)
         if (p.outside_since) {
           const diff = (new Date() - new Date(p.outside_since)) / 1000;
           if (diff >= 15) return false;
