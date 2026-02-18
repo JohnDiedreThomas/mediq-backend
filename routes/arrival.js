@@ -3,7 +3,7 @@ const router = express.Router();
 const db = require("../db");
 const auth = require("../middleware/auth");
 
-router.post("/", auth, (req, res) => {
+router.post("/", (req, res) => {
   const userId = req.user.id;
   const { latitude, longitude } = req.body;
 
