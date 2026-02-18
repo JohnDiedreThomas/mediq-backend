@@ -4,8 +4,14 @@ const db = require("../db");
 const auth = require("../middleware/auth");
 
 router.post("/", (req, res) => {
-  const userId = req.user.id;
-  const { latitude, longitude } = req.body;
+  const { userId, latitude, longitude } = req.body;
+
+  if (!userId) {
+    return res.status(400).json({
+      success: false,
+      message: "Missing userId",
+    });
+  }
 
   db.query(
     "UPDATE users SET latitude=?, longitude=? WHERE id=?",
