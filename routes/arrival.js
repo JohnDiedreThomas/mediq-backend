@@ -23,84 +23,83 @@ function getDistance(lat1, lon1, lat2, lon2) {
   return 2 * R * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
 }
 
+/* ======================
+   POST — UPDATE LOCATION
+====================== */
 router.post("/", (req, res) => {
   const { userId, latitude, longitude } = req.body;
 
-  if (!userId) {
+  if (!userId || !latitude || !longitude) {
     return res.status(400).json({ success: false });
   }
 
   db.query(
-    "SELECT latitude, longitude FROM users WHERE id=?",
-    [userId],
-    (err, rows) => {
+    "UPDATE users SET latitude=?, longitude=? WHERE id=?",
+    [latitude, longitude, userId],
+    (err) => {
 
-      if (rows.length > 0) {
-        const prev = rows[0];
-
-        if (prev.latitude && prev.longitude) {
-          const d = getDistance(prev.latitude, prev.longitude, latitude, longitude);
-
-          if (d < 8) {
-            return res.json({ success: true });
-          }
-        }
+      if (err) {
+        console.error("LOCATION UPDATE ERROR:", err);
+        return res.status(500).json({ success: false });
       }
 
-      db.query(
-        "UPDATE users SET latitude=?, longitude=? WHERE id=?",
-        [latitude, longitude, userId],
-        () => {
-
-          const dClinic = getDistance(
-            CLINIC.latitude,
-            CLINIC.longitude,
-            latitude,
-            longitude
-          );
-
-          if (dClinic <= CLINIC.radius) {
-            db.query(
-              `UPDATE appointments
-               SET arrived = 1
-               WHERE user_id = ?
-               AND status = 'approved'
-               AND DATE(date) = CURDATE()`,
-              [userId]
-            );
-          } else {
-            db.query(
-              `UPDATE appointments
-               SET arrived = 0
-               WHERE user_id = ?
-               AND status = 'approved'
-               AND DATE(date) = CURDATE()`,
-              [userId]
-            );
-          }
-
-          res.json({ success: true });
-        }
+      const dClinic = getDistance(
+        CLINIC.latitude,
+        CLINIC.longitude,
+        latitude,
+        longitude
       );
 
+      // ✅ ONLY affect TODAY approved appointments
+      if (dClinic <= CLINIC.radius) {
+        db.query(
+          `UPDATE appointments
+           SET arrived = 1
+           WHERE user_id = ?
+           AND status = 'approved'
+           AND DATE(date) = CURDATE()`,
+          [userId]
+        );
+      } else {
+        db.query(
+          `UPDATE appointments
+           SET arrived = 0
+           WHERE user_id = ?
+           AND status = 'approved'
+           AND DATE(date) = CURDATE()`,
+          [userId]
+        );
+      }
+
+      res.json({ success: true });
     }
   );
 });
 
+/* ======================
+   GET — NEARBY PATIENTS
+====================== */
 router.get("/nearby", (req, res) => {
+
   db.query(
     `
-   SELECT DISTINCT u.id, u.name, u.latitude, u.longitude
-FROM users u
-JOIN appointments a ON a.user_id = u.id
-WHERE a.arrived = 1
-AND a.status = 'approved'
-AND DATE(a.date) = CURDATE()
+    SELECT DISTINCT u.id, u.name, u.latitude, u.longitude
+    FROM users u
+    JOIN appointments a ON a.user_id = u.id
+    WHERE a.arrived = 1
+    AND a.status = 'approved'
+    AND DATE(a.date) = CURDATE()
     `,
     (err, rows) => {
 
+      if (err) {
+        console.error("NEARBY ERROR:", err);
+        return res.status(500).json({ success: false });
+      }
+
       const inside = rows.filter(p => {
-        if (!p.latitude) return false;
+
+        if (!p.latitude || !p.longitude) return false;
 
         const d = getDistance(
           CLINIC.latitude,
@@ -115,6 +114,7 @@ AND DATE(a.date) = CURDATE()
       res.json({ success: true, patients: inside });
     }
   );
+
 });
 
 module.exports = router;
