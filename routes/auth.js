@@ -234,7 +234,10 @@ router.post("/save-token", (req, res) => {
 router.post("/logout", (req, res) => {
   const { userId } = req.body;
 
+  console.log("Logout request body:", req.body);
+
   if (!userId) {
+    console.log("No userId provided");
     return res.status(400).json({ success: false });
   }
 
@@ -243,14 +246,16 @@ router.post("/logout", (req, res) => {
      SET latitude = NULL,
          longitude = NULL,
          outside_since = NULL
-         push_token = NULL
      WHERE id = ?`,
     [userId],
-    (err) => {
+    (err, result) => {
+
       if (err) {
         console.error("LOGOUT ERROR:", err);
         return res.status(500).json({ success: false });
       }
+
+      console.log("Logout DB result:", result);
 
       res.json({ success: true });
     }
