@@ -1,6 +1,7 @@
 const express = require("express");
 const router = express.Router();
 const db = require("../db");
+const { sendPushNotification } = require("../pushNotification");
 
 const CLINIC = {
   latitude: 13.236819,
@@ -52,6 +53,7 @@ router.post("/", (req, res) => {
 
       if (dClinic <= CLINIC.radius) {
 
+        // mark online
         db.query(
           "UPDATE users SET outside_since = NULL WHERE id=?",
           [userId]
@@ -67,35 +69,58 @@ router.post("/", (req, res) => {
           [userId],
           (err, result) => {
 
-            // Only notify if arrival changed
-            if (result.affectedRows > 0) {
+            // notify only once
+            if (!err && result.affectedRows > 0) {
 
               db.query(
-                "SELECT id FROM users WHERE role='staff'",
-                (err, staffRows) => {
-
-                  staffRows.forEach(staff => {
-                    db.query(
-                      `INSERT INTO notifications (user_id, title, message)
-                       VALUES (?, ?, ?)`,
-                      [
-                        staff.id,
-                        "Patient Arrived",
-                        "A patient has arrived at the clinic"
-                      ]
-                    );
-                  });
-
+                "SELECT id, push_token FROM users WHERE role='staff'",
+                async (err, staffRows) => {
+            
+                  if (!err && staffRows) {
+            
+                    for (const staff of staffRows) {
+            
+                      // save notification in DB
+                      db.query(
+                        `INSERT INTO notifications (user_id, title, message)
+                         VALUES (?, ?, ?)`,
+                        [
+                          staff.id,
+                          "Patient Arrived",
+                          "A patient has arrived at the clinic"
+                        ]
+                      );
+            
+                      // send push notification
+                      if (staff.push_token) {
+                        try {
+                          await sendPushNotification(
+                            staff.push_token,
+                            "Patient Arrived 📍",
+                            "A patient has arrived at the clinic"
+                          );
+                        } catch (e) {
+                          console.log("Push send error:", e);
+                        }
+                      }
+            
+                    }
+            
+                  }
+            
                 }
               );
-
+            
             }
+            
+            
 
           }
         );
 
       } else {
 
+        // mark offline timer
         db.query(
           `UPDATE users
            SET outside_since = IFNULL(outside_since, NOW())
@@ -123,6 +148,14 @@ router.post("/", (req, res) => {
 ====================== */
 router.get("/nearby", (req, res) => {
 
+  db.query(`
+    UPDATE appointments
+    SET arrived = 0,
+        status = 'expired'
+    WHERE DATE(date) < CURDATE()
+    AND status = 'approved'
+  `);
+
   db.query(
     `
     SELECT DISTINCT u.id, u.name, u.latitude, u.longitude, u.outside_since
@@ -131,6 +164,8 @@ router.get("/nearby", (req, res) => {
     WHERE a.arrived = 1
     AND a.status = 'approved'
     AND DATE(a.date) = CURDATE()
+    AND u.latitude IS NOT NULL
+AND u.longitude IS NOT NULL
     `,
     (err, rows) => {
 
@@ -150,10 +185,13 @@ router.get("/nearby", (req, res) => {
           p.longitude
         );
 
-        if (p.outside_since) {
-          const diff = (new Date() - new Date(p.outside_since)) / 1000;
-          if (diff >= 15) return false;
-        }
+      
+        
+  // 🔴 REMOVE if last update > 60 seconds
+  if (p.outside_since) {
+    const diff = (Date.now() - new Date(p.outside_since).getTime()) / 1000;
+    if (diff >= 60) return false;
+  }
 
         return d <= CLINIC.radius;
       });

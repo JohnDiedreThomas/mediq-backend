@@ -228,6 +228,35 @@ router.post("/save-token", (req, res) => {
   });
 });
 
+/* =====================
+   LOGOUT — CLEAR PRESENCE
+===================== */
+router.post("/logout", (req, res) => {
+  const { userId } = req.body;
+
+  if (!userId) {
+    return res.status(400).json({ success: false });
+  }
+
+  db.query(
+    `UPDATE users
+     SET latitude = NULL,
+         longitude = NULL,
+         outside_since = NULL
+         push_token = NULL
+     WHERE id = ?`,
+    [userId],
+    (err) => {
+      if (err) {
+        console.error("LOGOUT ERROR:", err);
+        return res.status(500).json({ success: false });
+      }
+
+      res.json({ success: true });
+    }
+  );
+});
+
 
 
 module.exports = router;

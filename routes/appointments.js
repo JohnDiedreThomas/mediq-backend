@@ -367,7 +367,8 @@ router.put("/:id/cancel", (req, res) => {
         // 3️⃣ Update status → cancelled
         db.query(
           `UPDATE appointments 
-           SET status = 'cancelled' 
+           SET status = 'cancelled', 
+            arrived = 0
            WHERE id = ?`,
           [id],
           (err) => {
@@ -560,7 +561,8 @@ router.put("/:id/complete", (req, res) => {
   // 1️⃣ Update status
   db.query(
     `UPDATE appointments
-     SET status = 'completed'
+     SET status = 'completed',
+     arrived = 0
      WHERE id = ? AND status = 'approved'`,
     [id],
     (err, result) => {
