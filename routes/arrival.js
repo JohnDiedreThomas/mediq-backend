@@ -60,17 +60,21 @@ router.post("/", (req, res) => {
           );
 
           if (dClinic <= CLINIC.radius) {
-            // Patient inside → mark arrived
             db.query(
-              `UPDATE appointments SET arrived=1
-               WHERE user_id=? AND DATE(date)=CURDATE()`,
+              `UPDATE appointments
+               SET arrived = 1
+               WHERE user_id = ?
+               AND status = 'approved'
+               AND DATE(date) = CURDATE()`,
               [userId]
             );
           } else {
-            // Patient outside → reset arrival
             db.query(
-              `UPDATE appointments SET arrived=0
-               WHERE user_id=? AND DATE(date)=CURDATE()`,
+              `UPDATE appointments
+               SET arrived = 0
+               WHERE user_id = ?
+               AND status = 'approved'
+               AND DATE(date) = CURDATE()`,
               [userId]
             );
           }
@@ -86,10 +90,12 @@ router.post("/", (req, res) => {
 router.get("/nearby", (req, res) => {
   db.query(
     `
-    SELECT u.id, u.name, u.latitude, u.longitude
-    FROM users u
-    JOIN appointments a ON a.user_id = u.id
-    WHERE a.arrived = 1
+   SELECT DISTINCT u.id, u.name, u.latitude, u.longitude
+FROM users u
+JOIN appointments a ON a.user_id = u.id
+WHERE a.arrived = 1
+AND a.status = 'approved'
+AND DATE(a.date) = CURDATE()
     `,
     (err, rows) => {
 
