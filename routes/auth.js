@@ -243,10 +243,10 @@ router.post("/logout", (req, res) => {
 
   db.query(
     `UPDATE users
-     SET latitude = NULL,
-         longitude = NULL,
-         outside_since = NULL
-     WHERE id = ?`,
+SET latitude = NULL,
+    longitude = NULL,
+    last_location_update = NULL
+WHERE id = ?`,
     [userId],
     (err, result) => {
 
