@@ -59,7 +59,7 @@ router.post("/", (req, res) => {
   }
 
   db.query(
-    "INSERT INTO doctors (name, specialty, description, is_active) VALUES (?, ?, 1)",
+    "INSERT INTO doctors (name, specialty, description, is_active) VALUES (?, ?, ?, 1)",
     [name, specialty],
     (err, result) => {
       if (err) {
