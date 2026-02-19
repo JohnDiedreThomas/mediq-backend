@@ -29,6 +29,7 @@ router.get("/:doctorId/availability", (req, res) => {
       ON s.doctor_id = a.doctor_id
       AND DATE(s.date) = DATE(a.date)
     WHERE a.doctor_id = ?
+    AND DATE(a.date) >= CURDATE()
     GROUP BY DATE(a.date);
   `;
 
@@ -55,6 +56,18 @@ router.get("/:doctorId/availability", (req, res) => {
 */
 router.get("/:doctorId/availability/:date", (req, res) => {
   const { doctorId, date } = req.params;
+  const today = new Date();
+  today.setHours(0,0,0,0);
+
+const requestedDate = new Date(date);
+
+if (requestedDate < today) {
+  return res.json({
+    success: false,
+    slots: [],
+  });
+}
+  
 
   const sql = `
     SELECT 

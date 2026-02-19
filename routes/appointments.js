@@ -55,6 +55,16 @@ router.post("/", (req, res) => {
     patient_notes,
   } = req.body;
 
+  const appointmentDateTime = new Date(`${date} ${time}`);
+const now = new Date();
+
+if (appointmentDateTime < now) {
+  return res.json({
+    success: false,
+    message: "Cannot book appointment in the past",
+  });
+}
+
   /* 🚫 BLOCK HOLIDAYS */
   if (isHoliday(date)) {
     return res.json({
@@ -204,6 +214,15 @@ router.put("/:id", (req, res) => {
     patient_age,
     patient_notes,
   } = req.body;
+  const appointmentDateTime = new Date(`${date} ${time}`);
+const now = new Date();
+
+if (appointmentDateTime < now) {
+  return res.json({
+    success: false,
+    message: "Cannot reschedule to past time",
+  });
+}
 
   if (!service || !doctor || !date || !time || !patient_name || !patient_age) {
     return res.json({ success: false, message: "Missing fields" });
@@ -296,7 +315,8 @@ router.put("/:id", (req, res) => {
                            time = ?,
                            patient_name = ?,
                            patient_age = ?,
-                           patient_notes = ?
+                           patient_notes = ?,
+                           reminder_sent = 0
                        WHERE id = ?`,
                       [
                         service,
@@ -342,10 +362,9 @@ router.put("/:id/cancel", (req, res) => {
   db.beginTransaction((err) => {
     if (err) return res.json({ success: false });
 
-    // 1️⃣ Get appointment info
     db.query(
-      `SELECT status, doctor, date, time 
-       FROM appointments 
+      `SELECT status, doctor, date, time, user_id
+       FROM appointments
        WHERE id = ?`,
       [id],
       (err, rows) => {
@@ -357,59 +376,56 @@ router.put("/:id/cancel", (req, res) => {
 
         const appt = rows[0];
 
-        // 2️⃣ Only allow cancel
-        if (!["pending", "approved"].includes(appt.status)) {
+        const apptDateTime = new Date(`${appt.date} ${appt.time}`);
+        if (apptDateTime < new Date()) {
           return db.rollback(() =>
-            res.json({ success: false, message: "Cannot cancel appointment" })
+            res.json({
+              success: false,
+              message: "Cannot cancel past appointment",
+            })
           );
         }
 
-        // 3️⃣ Update status → cancelled
+        if (!["pending", "approved"].includes(appt.status)) {
+          return db.rollback(() =>
+            res.json({
+              success: false,
+              message: "Cannot cancel appointment",
+            })
+          );
+        }
+
         db.query(
-          `UPDATE appointments 
+          `UPDATE appointments
            SET status = 'cancelled', 
-            arrived = 0
+           arrived = 0, 
+           reminder_sent = 1
            WHERE id = ?`,
           [id],
           (err) => {
-            if (err) {
-              return db.rollback(() =>
-                res.json({ success: false })
-              );
-            }
+            if (err) return db.rollback(() => res.json({ success: false }));
 
-            // 4️⃣ Restore time slot
             db.query(
               `UPDATE doctor_time_slots
                SET booked_slots = booked_slots - 1
                WHERE doctor_id = ?
-                 AND DATE(date) = ?
-                 AND time = ?
-                 AND booked_slots > 0`,
+               AND DATE(date) = ?
+               AND time = ?
+               AND booked_slots > 0`,
               [appt.doctor, appt.date, appt.time],
               (err) => {
-                if (err) {
-                  return db.rollback(() =>
-                    res.json({ success: false })
-                  );
-                }
+                if (err) return db.rollback(() => res.json({ success: false }));
 
-                // 5️⃣ Restore daily availability
                 db.query(
                   `UPDATE doctor_availability
                    SET booked_slots = booked_slots - 1
                    WHERE doctor_id = ?
-                     AND DATE(date) = ?
-                     AND booked_slots > 0`,
+                   AND DATE(date) = ?`,
                   [appt.doctor, appt.date],
                   (err) => {
-                    if (err) {
-                      return db.rollback(() =>
-                        res.json({ success: false })
-                      );
-                    }
-                     /* 🔔 ADD THIS PART ONLY */
-                     db.query(
+                    if (err) return db.rollback(() => res.json({ success: false }));
+
+                    db.query(
                       "SELECT push_token FROM users WHERE id = ?",
                       [appt.user_id],
                       async (err, userRows) => {
@@ -420,27 +436,28 @@ router.put("/:id/cancel", (req, res) => {
                             await sendPushNotification(
                               pushToken,
                               "Appointment Cancelled ❌",
-                              "Your appointment has been cancelled."
+                              "Your appointment has been cancelled. Contact the clinic for more info"
                             );
                           }
                         }
 
-                    db.commit(() => {
-                      res.json({ success: true });
-                    });
+                        db.commit(() => {
+                          res.json({ success: true });
+                        });
+                      }
+                    );
                   }
                 );
-                /* 🔔 END ADD */
               }
             );
           }
         );
       }
     );
-  }
-);
+  });
 });
-});
+
+
 
 
 
@@ -483,63 +500,75 @@ router.get("/doctor/:doctor_id", (req, res) => {
 router.put("/:id/approve", (req, res) => {
   const { id } = req.params;
 
-  // 1️⃣ Update appointment
   db.query(
-    `UPDATE appointments
-     SET status = 'approved'
-     WHERE id = ? AND status = 'pending'`,
+    "SELECT date, time FROM appointments WHERE id = ?",
     [id],
-    (err, result) => {
-      if (err || result.affectedRows === 0) {
+    (err, rows) => {
+      if (err || rows.length === 0) {
+        return res.json({ success: false });
+      }
+
+      const apptDateTime = new Date(`${rows[0].date} ${rows[0].time}`);
+
+      if (apptDateTime < new Date()) {
         return res.json({
           success: false,
-          message: "Cannot approve appointment",
+          message: "Cannot approve past appointment",
         });
       }
 
-      // 2️⃣ Get user_id
       db.query(
-        "SELECT user_id FROM appointments WHERE id = ?",
+        `UPDATE appointments
+         SET status = 'approved',
+             reminder_sent = 0
+         WHERE id = ? AND status = 'pending'`,
         [id],
-        (err, rows) => {
-          if (err || rows.length === 0) {
-            return res.json({ success: true });
+        (err, result) => {
+          if (err || result.affectedRows === 0) {
+            return res.json({
+              success: false,
+              message: "Cannot approve appointment",
+            });
           }
 
-          const userId = rows[0].user_id;
-
-          /* 🔔 SAVE NOTIFICATION (UNREAD) */
           db.query(
-            `INSERT INTO notifications (user_id, title, message, is_read)
-             VALUES (?, ?, ?, 0)`,
-            [
-              userId,
-              "Appointment Approved",
-              "Your appointment has been approved by the clinic."
-            ],
-            (notifErr) => {
-              if (notifErr) {
-                console.error("Notification insert error:", notifErr);
+            "SELECT user_id FROM appointments WHERE id = ?",
+            [id],
+            (err, rows) => {
+              if (err || rows.length === 0) {
+                return res.json({ success: true });
               }
 
-              // 3️⃣ Get push token
+              const userId = rows[0].user_id;
+
               db.query(
-                "SELECT push_token FROM users WHERE id = ?",
-                [userId],
-                async (err, userRows) => {
-                  if (!err && userRows.length > 0) {
-                    const pushToken = userRows[0].push_token;
+                `INSERT INTO notifications (user_id, title, message, is_read)
+                 VALUES (?, ?, ?, 0)`,
+                [
+                  userId,
+                  "Appointment Approved",
+                  "Your appointment has been approved by the clinic."
+                ],
+                () => {
+                  db.query(
+                    "SELECT push_token FROM users WHERE id = ?",
+                    [userId],
+                    async (err, userRows) => {
+                      if (!err && userRows.length > 0) {
+                        const pushToken = userRows[0].push_token;
 
-                    if (pushToken) {
-                      await sendPushNotification(
-                        pushToken,
-                        "Appointment Approved ✅",
-                        "Your appointment has been approved by the clinic."
-                      );
+                        if (pushToken) {
+                          await sendPushNotification(
+                            pushToken,
+                            "Appointment Approved ✅",
+                            "Your appointment has been approved by the clinic."
+                          );
+                        }
+                      }
+
+                      res.json({ success: true });
                     }
-                  }
-
-                  res.json({ success: true });
+                  );
                 }
               );
             }
@@ -562,7 +591,8 @@ router.put("/:id/complete", (req, res) => {
   db.query(
     `UPDATE appointments
      SET status = 'completed',
-     arrived = 0
+     arrived = 0,
+      reminder_sent = 1
      WHERE id = ? AND status = 'approved'`,
     [id],
     (err, result) => {

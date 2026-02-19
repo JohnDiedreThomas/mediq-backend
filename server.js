@@ -12,6 +12,7 @@ const servicesRoutes = require("./routes/services");
 const adminStaffRoutes = require("./routes/admin.staff");
 const adminAvailabilityRoutes = require("./routes/admin.availability");
 const adminDoctorsRoutes = require("./routes/admin.doctors");
+const startReminderWorker = require("./reminderWorker");
 
 const app = express();
 
@@ -39,7 +40,17 @@ app.use("/api/admin/overview", require("./routes/admin.overview"));
 app.use("/api/contact", require("./routes/contact"));
 app.use("/api/notifications", require("./routes/notifications"));
 app.use("/api/arrival", require("./routes/arrival"));
+const runDailyCleanup = require("./utils/cleanupScheduler");
 
-app.listen(3000, "0.0.0.0", () => {
-  console.log("Server running on port 3000");
+const PORT = process.env.PORT || 3000;
+
+app.listen(PORT, "0.0.0.0", () => {
+  console.log("Server running on port", PORT);
+
+  // start reminder worker
+  startReminderWorker();
+
+  runDailyCleanup();
+
+  setInterval(runDailyCleanup, 24 * 60 * 60 * 1000);
 });
