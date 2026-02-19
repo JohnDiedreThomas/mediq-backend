@@ -13,6 +13,7 @@ const adminStaffRoutes = require("./routes/admin.staff");
 const adminAvailabilityRoutes = require("./routes/admin.availability");
 const adminDoctorsRoutes = require("./routes/admin.doctors");
 const startReminderWorker = require("./reminderWorker");
+const runDailyCleanup = require("./utils/cleanupScheduler");
 
 const app = express();
 
@@ -40,7 +41,7 @@ app.use("/api/admin/overview", require("./routes/admin.overview"));
 app.use("/api/contact", require("./routes/contact"));
 app.use("/api/notifications", require("./routes/notifications"));
 app.use("/api/arrival", require("./routes/arrival"));
-const runDailyCleanup = require("./utils/cleanupScheduler");
+
 
 const PORT = process.env.PORT || 3000;
 
