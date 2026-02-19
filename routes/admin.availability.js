@@ -90,6 +90,19 @@ router.delete("/:doctorId/date", (req, res) => {
   const { doctorId } = req.params;
   const { date } = req.body;
 
+  const today = new Date();
+today.setHours(0,0,0,0);
+
+const targetDate = new Date(date);
+
+if (targetDate < today) {
+  return res.json({
+    success: false,
+    message: "Cannot modify past dates — record only",
+  });
+}
+
+
   db.query(
     "SELECT COUNT(*) AS total FROM doctor_time_slots WHERE doctor_id = ? AND DATE(date) = ? AND booked_slots > 0",
     [doctorId, date],
@@ -157,6 +170,17 @@ router.post("/:doctorId/:date/slot", (req, res) => {
   const { doctorId, date } = req.params;
   const { time, time_value, total_slots } = req.body;
 
+  const today = new Date();
+today.setHours(0,0,0,0);
+
+const targetDate = new Date(date);
+
+if (targetDate < today) {
+  return res.json({
+    success: false,
+    message: "Cannot add slot to past date",
+  });
+}
   if (!time || !time_value || !total_slots) {
     return res.json({ success: false, message: "Missing fields" });
   }

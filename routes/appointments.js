@@ -45,7 +45,7 @@ const isHoliday = (date) => {
 router.post("/", (req, res) => {
   const {
     user_id,
-    service_id,   
+    service_id,
     service,
     doctor,
     date,
@@ -56,16 +56,15 @@ router.post("/", (req, res) => {
   } = req.body;
 
   const appointmentDateTime = new Date(`${date} ${time}`);
-const now = new Date();
+  const now = new Date();
 
-if (appointmentDateTime < now) {
-  return res.json({
-    success: false,
-    message: "Cannot book appointment in the past",
-  });
-}
+  if (appointmentDateTime < now) {
+    return res.json({
+      success: false,
+      message: "Cannot book appointment in the past",
+    });
+  }
 
-  /* 🚫 BLOCK HOLIDAYS */
   if (isHoliday(date)) {
     return res.json({
       success: false,
@@ -73,7 +72,6 @@ if (appointmentDateTime < now) {
     });
   }
 
-  /* 🚫 REQUIRED FIELDS */
   if (
     !user_id ||
     !service_id ||
@@ -86,111 +84,113 @@ if (appointmentDateTime < now) {
     return res.json({ success: false, message: "Missing fields" });
   }
 
-  /* 🔐 TRANSACTION START */
-  db.beginTransaction((err) => {
-    if (err) {
-      return res.status(500).json({ success: false });
-    }
+  // ✅ GET CONNECTION FROM POOL
+  db.getConnection((err, conn) => {
+    if (err) return res.status(500).json({ success: false });
 
-    /* 🔒 LOCK TIME SLOT */
-    const lockSlotSql = `
-      SELECT id, total_slots, booked_slots
-      FROM doctor_time_slots
-      WHERE doctor_id = ? AND DATE(date) = ? AND time = ?
-      FOR UPDATE
-    `;
-
-    db.query(lockSlotSql, [doctor, date, time], (err, slots) => {
-      if (err || slots.length === 0) {
-        return db.rollback(() =>
-          res.json({ success: false, message: "Slot not found" })
-        );
+    conn.beginTransaction((err) => {
+      if (err) {
+        conn.release();
+        return res.status(500).json({ success: false });
       }
 
-      const slot = slots[0];
-
-      /* 🚫 SLOT FULL */
-      if (slot.booked_slots >= slot.total_slots) {
-        return db.rollback(() =>
-          res.json({ success: false, message: "Slot full" })
-        );
-      }
-
-      /* ✅ INSERT APPOINTMENT */
-      const insertSql = `
-        INSERT INTO appointments
-        (user_id, service_id, service, doctor, date, time, patient_name, patient_age, patient_notes, status)
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 'pending')
-
+      const lockSlotSql = `
+        SELECT id, total_slots, booked_slots
+        FROM doctor_time_slots
+        WHERE doctor_id = ? AND DATE(date) = ? AND time = ?
+        FOR UPDATE
       `;
 
-      db.query(
-        insertSql,
-        [
-          user_id,
-          service_id,
-          service,
-          doctor,
-          date,
-          time,
-          patient_name,
-          patient_age,
-          patient_notes || null,
-        ],
-        (err) => {
-          if (err) {
-            console.error("INSERT ERROR:", err);
-            return db.rollback(() =>
-              res.json({ success: false, message: "Insert failed" })
-            );
-          }
+      conn.query(lockSlotSql, [doctor, date, time], (err, slots) => {
+        if (err || slots.length === 0) {
+          return conn.rollback(() => {
+            conn.release();
+            res.json({ success: false, message: "Slot not found" });
+          });
+        }
 
-          /* ⬇️ REDUCE TIME SLOT */
-          db.query(
-            `
+        const slot = slots[0];
+
+        if (slot.booked_slots >= slot.total_slots) {
+          return conn.rollback(() => {
+            conn.release();
+            res.json({ success: false, message: "Slot full" });
+          });
+        }
+
+        const insertSql = `
+          INSERT INTO appointments
+          (user_id, service_id, service, doctor, date, time, patient_name, patient_age, patient_notes, status)
+          VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 'pending')
+        `;
+
+        conn.query(
+          insertSql,
+          [
+            user_id,
+            service_id,
+            service,
+            doctor,
+            date,
+            time,
+            patient_name,
+            patient_age,
+            patient_notes || null,
+          ],
+          (err) => {
+            if (err) {
+              return conn.rollback(() => {
+                conn.release();
+                res.json({ success: false, message: "Insert failed" });
+              });
+            }
+
+            conn.query(
+              `
               UPDATE doctor_time_slots
               SET booked_slots = booked_slots + 1
               WHERE id = ?
-            `,
-            [slot.id],
-            (err) => {
-              if (err) {
-                return db.rollback(() =>
-                  res.json({ success: false })
-                );
-              }
+              `,
+              [slot.id],
+              (err) => {
+                if (err) {
+                  return conn.rollback(() => {
+                    conn.release();
+                    res.json({ success: false });
+                  });
+                }
 
-              /* ⬇️ REDUCE DAILY AVAILABILITY */
-              db.query(
-                `
+                conn.query(
+                  `
                   UPDATE doctor_availability
                   SET booked_slots = booked_slots + 1
                   WHERE doctor_id = ? AND DATE(date) = ?
-                `,
-                [doctor, date],
-                (err) => {
-                  if (err) {
-                    return db.rollback(() =>
-                      res.json({ success: false })
-                    );
-                  }
-
-                  /* ✅ COMMIT */
-                  db.commit((err) => {
+                  `,
+                  [doctor, date],
+                  (err) => {
                     if (err) {
-                      return db.rollback(() =>
-                        res.json({ success: false })
-                      );
+                      return conn.rollback(() => {
+                        conn.release();
+                        res.json({ success: false });
+                      });
                     }
 
-                    res.json({ success: true });
-                  });
-                }
-              );
-            }
-          );
-        }
-      );
+                    conn.commit((err) => {
+                      conn.release();
+
+                      if (err) {
+                        return res.json({ success: false });
+                      }
+
+                      res.json({ success: true });
+                    });
+                  }
+                );
+              }
+            );
+          }
+        );
+      });
     });
   });
 });
@@ -214,142 +214,159 @@ router.put("/:id", (req, res) => {
     patient_age,
     patient_notes,
   } = req.body;
-  const appointmentDateTime = new Date(`${date} ${time}`);
-const now = new Date();
 
-if (appointmentDateTime < now) {
-  return res.json({
-    success: false,
-    message: "Cannot reschedule to past time",
-  });
-}
+  const appointmentDateTime = new Date(`${date} ${time}`);
+  const now = new Date();
+
+  if (appointmentDateTime < now) {
+    return res.json({
+      success: false,
+      message: "Cannot reschedule to past time",
+    });
+  }
 
   if (!service || !doctor || !date || !time || !patient_name || !patient_age) {
     return res.json({ success: false, message: "Missing fields" });
   }
 
-  db.beginTransaction((err) => {
+  db.getConnection((err, conn) => {
     if (err) return res.json({ success: false });
 
-    // 1️⃣ Get old appointment info
-    db.query(
-      "SELECT doctor, date, time, status FROM appointments WHERE id = ?",
-      [id],
-      (err, rows) => {
-        if (err || rows.length === 0) {
-          return db.rollback(() =>
-            res.json({ success: false, message: "Appointment not found" })
-          );
-        }
+    conn.beginTransaction((err) => {
+      if (err) {
+        conn.release();
+        return res.json({ success: false });
+      }
 
-        const oldAppt = rows[0];
+      // 1️⃣ Get old appointment info
+      conn.query(
+        "SELECT doctor, date, time, status FROM appointments WHERE id = ?",
+        [id],
+        (err, rows) => {
+          if (err || rows.length === 0) {
+            return conn.rollback(() => {
+              conn.release();
+              res.json({ success: false, message: "Appointment not found" });
+            });
+          }
 
-        if (oldAppt.status !== "pending") {
-          return db.rollback(() =>
-            res.json({
-              success: false,
-              message: "Only pending appointments can be edited",
-            })
-          );
-        }
+          const oldAppt = rows[0];
 
-        // 2️⃣ Restore OLD slot
-        db.query(
-          `UPDATE doctor_time_slots
-           SET booked_slots = booked_slots - 1
-           WHERE doctor_id = ?
-             AND DATE(date) = ?
-             AND time = ?
-             AND booked_slots > 0`,
-          [oldAppt.doctor, oldAppt.date, oldAppt.time],
-          (err) => {
-            if (err) {
-              return db.rollback(() =>
-                res.json({ success: false })
-              );
-            }
+          if (oldAppt.status !== "pending") {
+            return conn.rollback(() => {
+              conn.release();
+              res.json({
+                success: false,
+                message: "Only pending appointments can be edited",
+              });
+            });
+          }
 
-            // 3️⃣ Lock NEW slot
-            db.query(
-              `SELECT id, total_slots, booked_slots
-               FROM doctor_time_slots
-               WHERE doctor_id = ?
-                 AND DATE(date) = ?
-                 AND time = ?
-               FOR UPDATE`,
-              [doctor, date, time],
-              (err, slotRows) => {
-                if (err || slotRows.length === 0) {
-                  return db.rollback(() =>
-                    res.json({ success: false, message: "New slot not found" })
-                  );
-                }
+          // 2️⃣ Restore OLD slot
+          conn.query(
+            `UPDATE doctor_time_slots
+             SET booked_slots = booked_slots - 1
+             WHERE doctor_id = ?
+               AND DATE(date) = ?
+               AND time = ?
+               AND booked_slots > 0`,
+            [oldAppt.doctor, oldAppt.date, oldAppt.time],
+            (err) => {
+              if (err) {
+                return conn.rollback(() => {
+                  conn.release();
+                  res.json({ success: false });
+                });
+              }
 
-                const newSlot = slotRows[0];
+              // 3️⃣ Lock NEW slot
+              conn.query(
+                `SELECT id, total_slots, booked_slots
+                 FROM doctor_time_slots
+                 WHERE doctor_id = ?
+                   AND DATE(date) = ?
+                   AND time = ?
+                 FOR UPDATE`,
+                [doctor, date, time],
+                (err, slotRows) => {
+                  if (err || slotRows.length === 0) {
+                    return conn.rollback(() => {
+                      conn.release();
+                      res.json({ success: false, message: "New slot not found" });
+                    });
+                  }
 
-                if (newSlot.booked_slots >= newSlot.total_slots) {
-                  return db.rollback(() =>
-                    res.json({ success: false, message: "New slot is full" })
-                  );
-                }
+                  const newSlot = slotRows[0];
 
-                // 4️⃣ Deduct NEW slot
-                db.query(
-                  `UPDATE doctor_time_slots
-                   SET booked_slots = booked_slots + 1
-                   WHERE id = ?`,
-                  [newSlot.id],
-                  (err) => {
-                    if (err) {
-                      return db.rollback(() =>
-                        res.json({ success: false })
-                      );
-                    }
+                  if (newSlot.booked_slots >= newSlot.total_slots) {
+                    return conn.rollback(() => {
+                      conn.release();
+                      res.json({ success: false, message: "New slot is full" });
+                    });
+                  }
 
-                    // 5️⃣ Update appointment
-                    db.query(
-                      `UPDATE appointments
-                       SET service = ?,
-                           doctor = ?,
-                           date = ?,
-                           time = ?,
-                           patient_name = ?,
-                           patient_age = ?,
-                           patient_notes = ?,
-                           reminder_sent = 0
-                       WHERE id = ?`,
-                      [
-                        service,
-                        doctor,
-                        date,
-                        time,
-                        patient_name,
-                        patient_age,
-                        patient_notes || null,
-                        id,
-                      ],
-                      (err) => {
-                        if (err) {
-                          return db.rollback(() =>
-                            res.json({ success: false })
-                          );
-                        }
-
-                        db.commit(() => {
-                          res.json({ success: true });
+                  // 4️⃣ Deduct NEW slot
+                  conn.query(
+                    `UPDATE doctor_time_slots
+                     SET booked_slots = booked_slots + 1
+                     WHERE id = ?`,
+                    [newSlot.id],
+                    (err) => {
+                      if (err) {
+                        return conn.rollback(() => {
+                          conn.release();
+                          res.json({ success: false });
                         });
                       }
-                    );
-                  }
-                );
-              }
-            );
-          }
-        );
-      }
-    );
+
+                      // 5️⃣ Update appointment
+                      conn.query(
+                        `UPDATE appointments
+                         SET service = ?,
+                             doctor = ?,
+                             date = ?,
+                             time = ?,
+                             patient_name = ?,
+                             patient_age = ?,
+                             patient_notes = ?,
+                             reminder_sent = 0
+                         WHERE id = ?`,
+                        [
+                          service,
+                          doctor,
+                          date,
+                          time,
+                          patient_name,
+                          patient_age,
+                          patient_notes || null,
+                          id,
+                        ],
+                        (err) => {
+                          if (err) {
+                            return conn.rollback(() => {
+                              conn.release();
+                              res.json({ success: false });
+                            });
+                          }
+
+                          conn.commit(() => {
+                            conn.release();
+                            res.json({ success: true });
+                          });
+                        }
+                      );
+                    }
+                  );
+                }
+              );
+            }
+          );
+        }
+      );
+    });
   });
 });
+
 
 /*
 |--------------------------------------------------------------------------
@@ -359,105 +376,134 @@ if (appointmentDateTime < now) {
 router.put("/:id/cancel", (req, res) => {
   const { id } = req.params;
 
-  db.beginTransaction((err) => {
+  db.getConnection((err, conn) => {
     if (err) return res.json({ success: false });
 
-    db.query(
-      `SELECT status, doctor, date, time, user_id
-       FROM appointments
-       WHERE id = ?`,
-      [id],
-      (err, rows) => {
-        if (err || rows.length === 0) {
-          return db.rollback(() =>
-            res.json({ success: false, message: "Appointment not found" })
-          );
-        }
+    conn.beginTransaction((err) => {
+      if (err) {
+        conn.release();
+        return res.json({ success: false });
+      }
 
-        const appt = rows[0];
+      conn.query(
+        `SELECT status, doctor, date, time, user_id
+         FROM appointments
+         WHERE id = ?`,
+        [id],
+        (err, rows) => {
+          if (err || rows.length === 0) {
+            return conn.rollback(() => {
+              conn.release();
+              res.json({ success: false, message: "Appointment not found" });
+            });
+          }
 
-        const apptDateTime = new Date(`${appt.date} ${appt.time}`);
-        if (apptDateTime < new Date()) {
-          return db.rollback(() =>
-            res.json({
-              success: false,
-              message: "Cannot cancel past appointment",
-            })
-          );
-        }
+          const appt = rows[0];
 
-        if (!["pending", "approved"].includes(appt.status)) {
-          return db.rollback(() =>
-            res.json({
-              success: false,
-              message: "Cannot cancel appointment",
-            })
-          );
-        }
+          const apptDateTime = new Date(`${appt.date} ${appt.time}`);
+          if (apptDateTime < new Date()) {
+            return conn.rollback(() => {
+              conn.release();
+              res.json({
+                success: false,
+                message: "Cannot cancel past appointment",
+              });
+            });
+          }
 
-        db.query(
-          `UPDATE appointments
-           SET status = 'cancelled', 
-           arrived = 0, 
-           reminder_sent = 1
-           WHERE id = ?`,
-          [id],
-          (err) => {
-            if (err) return db.rollback(() => res.json({ success: false }));
+          if (!["pending", "approved"].includes(appt.status)) {
+            return conn.rollback(() => {
+              conn.release();
+              res.json({
+                success: false,
+                message: "Cannot cancel appointment",
+              });
+            });
+          }
 
-            db.query(
-              `UPDATE doctor_time_slots
-               SET booked_slots = booked_slots - 1
-               WHERE doctor_id = ?
-               AND DATE(date) = ?
-               AND time = ?
-               AND booked_slots > 0`,
-              [appt.doctor, appt.date, appt.time],
-              (err) => {
-                if (err) return db.rollback(() => res.json({ success: false }));
+          conn.query(
+            `UPDATE appointments
+             SET status = 'cancelled', 
+                 arrived = 0, 
+                 reminder_sent = 1
+             WHERE id = ?`,
+            [id],
+            (err) => {
+              if (err) {
+                return conn.rollback(() => {
+                  conn.release();
+                  res.json({ success: false });
+                });
+              }
 
-                db.query(
-                  `UPDATE doctor_availability
-                   SET booked_slots = booked_slots - 1
-                   WHERE doctor_id = ?
-                   AND DATE(date) = ?`,
-                  [appt.doctor, appt.date],
-                  (err) => {
-                    if (err) return db.rollback(() => res.json({ success: false }));
+              conn.query(
+                `UPDATE doctor_time_slots
+                 SET booked_slots = booked_slots - 1
+                 WHERE doctor_id = ?
+                 AND DATE(date) = ?
+                 AND time = ?
+                 AND booked_slots > 0`,
+                [appt.doctor, appt.date, appt.time],
+                (err) => {
+                  if (err) {
+                    return conn.rollback(() => {
+                      conn.release();
+                      res.json({ success: false });
+                    });
+                  }
 
-                    db.query(
-                      "SELECT push_token FROM users WHERE id = ?",
-                      [appt.user_id],
-                      async (err, userRows) => {
-                        if (!err && userRows.length > 0) {
-                          const pushToken = userRows[0].push_token;
-
-                          if (pushToken) {
-                            await sendPushNotification(
-                              pushToken,
-                              "Appointment Cancelled ❌",
-                              "Your appointment has been cancelled. Contact the clinic for more info"
-                            );
-                          }
-                        }
-
-                        db.commit(() => {
-                          res.json({ success: true });
+                  conn.query(
+                    `UPDATE doctor_availability
+                     SET booked_slots = booked_slots - 1
+                     WHERE doctor_id = ?
+                     AND DATE(date) = ?`,
+                    [appt.doctor, appt.date],
+                    (err) => {
+                      if (err) {
+                        return conn.rollback(() => {
+                          conn.release();
+                          res.json({ success: false });
                         });
                       }
-                    );
-                  }
-                );
-              }
-            );
-          }
-        );
-      }
-    );
+
+                      conn.query(
+                        "SELECT push_token FROM users WHERE id = ?",
+                        [appt.user_id],
+                        async (err, userRows) => {
+                          if (!err && userRows.length > 0) {
+                            const pushToken = userRows[0].push_token;
+
+                            if (pushToken) {
+                              await sendPushNotification(
+                                pushToken,
+                                "Appointment Cancelled ❌",
+                                "Your appointment has been cancelled. Contact the clinic for more info"
+                              );
+                            }
+                          }
+
+                          conn.commit((err) => {
+                            conn.release();
+
+                            if (err) {
+                              return res.json({ success: false });
+                            }
+
+                            res.json({ success: true });
+                          });
+                        }
+                      );
+                    }
+                  );
+                }
+              );
+            }
+          );
+        }
+      );
+    });
   });
 });
-
-
 
 
 
