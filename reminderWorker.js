@@ -1,6 +1,42 @@
 const db = require("./db");
 const { sendPushNotification } = require("./pushNotification");
 
+/*
+|-----------------------------------------------------------
+| Convert 12-hour time (e.g. 4:30 PM) → 24-hour (16:30:00)
+|-----------------------------------------------------------
+*/
+function convertTo24Hour(timeStr) {
+  if (!timeStr) return "00:00:00";
+
+  const parts = timeStr.trim().split(" ");
+
+  // If already 24h format like "16:30"
+  if (parts.length === 1) {
+    return parts[0] + ":00";
+  }
+
+  const [time, modifier] = parts;
+  let [hours, minutes] = time.split(":");
+
+  hours = parseInt(hours, 10);
+
+  if (modifier.toUpperCase() === "PM" && hours !== 12) {
+    hours += 12;
+  }
+
+  if (modifier.toUpperCase() === "AM" && hours === 12) {
+    hours = 0;
+  }
+
+  return `${String(hours).padStart(2, "0")}:${minutes}:00`;
+}
+
+/*
+|-----------------------------------------------------------
+| Reminder Worker
+|-----------------------------------------------------------
+*/
 function startReminderWorker() {
   console.log("🕒 Reminder worker running...");
 
@@ -32,37 +68,45 @@ function startReminderWorker() {
       const now = new Date();
 
       for (const appt of rows) {
-        const apptDateTime = new Date(appt.date + "T" + convertTo24Hour(appt.time));
-        const diffMinutes = (apptDateTime - now) / (1000 * 60);
-
-        // 🔔 send reminder 60 minutes before
-        if (diffMinutes > 0 && diffMinutes <= 60) {
-          if (appt.push_token) {
-            const serviceName = appt.service || "Appointment";
-            const doctorName = appt.doctor_name || "Doctor";
-            const appointmentTime = appt.time;
-
-            const apptDate = new Date(appt.date);
-            const isToday =
-              apptDate.toDateString() === now.toDateString();
-
-            const message = isToday
-              ? `Reminder: You have an appointment for ${serviceName} with ${doctorName} at ${appointmentTime} today`
-              : `Reminder: You have an appointment for ${serviceName} with ${doctorName} at ${appointmentTime} tomorrow`;
-
-            await sendPushNotification(
-              appt.push_token,
-              "🔔 Mediq",
-              message
-            );
-          }
-
-          db.query(
-            "UPDATE appointments SET reminder_sent = 1 WHERE id = ?",
-            [appt.id]
+        try {
+          const apptDateTime = new Date(
+            appt.date + "T" + convertTo24Hour(appt.time)
           );
 
-          console.log("Reminder sent for appointment:", appt.id);
+          const diffMinutes = (apptDateTime - now) / (1000 * 60);
+
+          // 🔔 Send reminder within 60 minutes
+          if (diffMinutes > 0 && diffMinutes <= 60) {
+            if (appt.push_token) {
+              const serviceName = appt.service || "Appointment";
+              const doctorName = appt.doctor_name || "Doctor";
+              const appointmentTime = appt.time;
+
+              const apptDate = new Date(appt.date);
+              const isToday =
+                apptDate.toDateString() === now.toDateString();
+
+              const message = isToday
+                ? `Reminder: You have an appointment for ${serviceName} with ${doctorName} at ${appointmentTime} today`
+                : `Reminder: You have an appointment for ${serviceName} with ${doctorName} at ${appointmentTime} tomorrow`;
+
+              await sendPushNotification(
+                appt.push_token,
+                "🔔 Mediq Reminder",
+                message
+              );
+
+              console.log("Reminder sent for appointment:", appt.id);
+            }
+
+            // Mark reminder sent
+            db.query(
+              "UPDATE appointments SET reminder_sent = 1 WHERE id = ?",
+              [appt.id]
+            );
+          }
+        } catch (error) {
+          console.error("Reminder processing error:", error);
         }
       }
     });
