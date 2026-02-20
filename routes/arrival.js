@@ -6,8 +6,11 @@ const { sendPushNotification } = require("../pushNotification");
 const CLINIC = {
   latitude: 13.236819,
   longitude: 123.776000,
-  radius: 50,
+  radius: 60,
 };
+
+const BUFFER = 5; // meters
+
 
 function getDistance(lat1, lon1, lat2, lon2) {
   const R = 6371e3;
@@ -54,11 +57,15 @@ router.post("/", (req, res) => {
         longitude
       );
 
-      if (dClinic <= CLINIC.radius) {
+      console.log(
+        `[GPS] User ${userId} distance ${dClinic.toFixed(2)}m`
+      );
+
+      if (dClinic <= CLINIC.radius + BUFFER) {
 
         db.query(
           `UPDATE appointments
-           SET arrived = 1
+           SET arrived = 1, arrived_at = NOW()
            WHERE user_id = ?
            AND status = 'approved'
            AND DATE(date) = CURDATE()
@@ -109,7 +116,7 @@ router.post("/", (req, res) => {
           }
         );
 
-      } else {
+      } else if (dClinic > CLINIC.radius + BUFFER) {
 
         db.query(
           `UPDATE appointments
@@ -149,6 +156,7 @@ router.get("/nearby", (req, res) => {
       u.latitude,
       u.longitude,
       u.last_location_update
+      a.arrived_at
     FROM users u
     JOIN appointments a ON a.user_id = u.id
     WHERE a.arrived = 1
@@ -166,6 +174,7 @@ router.get("/nearby", (req, res) => {
       }
 
       const inside = rows.filter(p => {
+        
 
         const d = getDistance(
           CLINIC.latitude,
@@ -174,7 +183,7 @@ router.get("/nearby", (req, res) => {
           p.longitude
         );
 
-        return d <= CLINIC.radius;
+        return d <= CLINIC.radius + BUFFER;
       });
 
       res.json({ success: true, patients: inside });

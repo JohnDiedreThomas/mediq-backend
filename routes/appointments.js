@@ -543,6 +543,23 @@ router.get("/doctor/:doctor_id", (req, res) => {
 | APPROVE APPOINTMENT (STAFF)
 |--------------------------------------------------------------------------
 */
+// Helper — convert time to 24h
+function convertTo24Hour(timeStr) {
+  if (!timeStr) return "00:00:00";
+
+  const parts = timeStr.trim().split(" ");
+  if (parts.length === 1) return parts[0] + ":00";
+
+  const [time, modifier] = parts;
+  let [hours, minutes] = time.split(":");
+
+  hours = parseInt(hours, 10);
+
+  if (modifier.toUpperCase() === "PM" && hours !== 12) hours += 12;
+  if (modifier.toUpperCase() === "AM" && hours === 12) hours = 0;
+
+  return `${String(hours).padStart(2, "0")}:${minutes}:00`;
+}
 router.put("/:id/approve", (req, res) => {
   const { id } = req.params;
 
@@ -554,9 +571,12 @@ router.put("/:id/approve", (req, res) => {
         return res.json({ success: false });
       }
 
-      const apptDateTime = new Date(`${rows[0].date} ${rows[0].time}`);
+      const appointmentTime24 = convertTo24Hour(rows[0].time);
+      const apptDateTime = new Date(`${rows[0].date}T${appointmentTime24}+08:00`);
 
-      if (apptDateTime < new Date()) {
+      const now = new Date(Date.now() + 8 * 60 * 60 * 1000);
+
+      if (apptDateTime < now) {
         return res.json({
           success: false,
           message: "Cannot approve past appointment",
@@ -578,45 +598,59 @@ router.put("/:id/approve", (req, res) => {
           }
 
           db.query(
-            "SELECT user_id FROM appointments WHERE id = ?",
+            `SELECT a.*, u.push_token, d.name AS doctor_name
+             FROM appointments a
+             JOIN users u ON u.id = a.user_id
+             LEFT JOIN doctors d ON d.id = a.doctor
+             WHERE a.id = ?`,
             [id],
-            (err, rows) => {
+            async (err, rows) => {
               if (err || rows.length === 0) {
                 return res.json({ success: true });
               }
 
-              const userId = rows[0].user_id;
+              const appt = rows[0];
 
+              // Save notification
               db.query(
                 `INSERT INTO notifications (user_id, title, message, is_read)
                  VALUES (?, ?, ?, 0)`,
                 [
-                  userId,
+                  appt.user_id,
                   "Appointment Approved",
-                  "Your appointment has been approved by the clinic."
-                ],
-                () => {
-                  db.query(
-                    "SELECT push_token FROM users WHERE id = ?",
-                    [userId],
-                    async (err, userRows) => {
-                      if (!err && userRows.length > 0) {
-                        const pushToken = userRows[0].push_token;
-
-                        if (pushToken) {
-                          await sendPushNotification(
-                            pushToken,
-                            "Appointment Approved ✅",
-                            "Your appointment has been approved by the clinic."
-                          );
-                        }
-                      }
-
-                      res.json({ success: true });
-                    }
-                  );
-                }
+                  "Your appointment has been approved by the clinic.",
+                ]
               );
+
+              // Approval push
+              if (appt.push_token) {
+                await sendPushNotification(
+                  appt.push_token,
+                  "Appointment Approved ✅",
+                  "Your appointment has been approved by the clinic."
+                );
+              }
+
+              // Instant reminder
+              const appointmentTime24 = convertTo24Hour(appt.time);
+              const apptDateTime = new Date(`${appt.date}T${appointmentTime24}+08:00`);
+
+              const now = new Date(Date.now() + 8 * 60 * 60 * 1000);
+              const diffMinutes = (apptDateTime - now) / (1000 * 60);
+
+              if (diffMinutes >= 0 && diffMinutes <= 60 && appt.push_token) {
+                const message = `Reminder: You have an appointment for ${appt.service} with ${appt.doctor_name} at ${appt.time} today`;
+
+                await sendPushNotification(
+                  appt.push_token,
+                  "🔔 Mediq Reminder",
+                  message
+                );
+
+                console.log("⚡ Instant reminder sent:", id);
+              }
+
+              res.json({ success: true });
             }
           );
         }

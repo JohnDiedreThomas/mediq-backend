@@ -65,26 +65,31 @@ function startReminderWorker() {
         return;
       }
 
-      const now = new Date(new Date().toLocaleString("en-US", { timeZone: "Asia/Manila" }));
+      const now = new Date(Date.now() + 8 * 60 * 60 * 1000);
 
       for (const appt of rows) {
         try {
-            const apptDateTime = new Date(
-                new Date(appt.date + " " + appt.time).toLocaleString("en-US", { timeZone: "Asia/Manila" })
-              );
+          
+          const appointmentTime24 = convertTo24Hour(appt.time);
+
+          const apptDateTime = new Date(
+            `${appt.date}T${appointmentTime24}+08:00`
+          );
 
           const diffMinutes = (apptDateTime - now) / (1000 * 60);
-
+          console.log("📍 Appointment ID:", appt.id);
+    console.log("🕒 Manila now:", now);
+    console.log("📅 Appointment time:", apptDateTime);
+    console.log("⏱ Diff minutes:", diffMinutes);
           // 🔔 Send reminder within 60 minutes
-          if (diffMinutes > 0 && diffMinutes <= 60) {
+          if (diffMinutes >= -10 && diffMinutes <= 60) {
             if (appt.push_token) {
               const serviceName = appt.service || "Appointment";
               const doctorName = appt.doctor_name || "Doctor";
               const appointmentTime = appt.time;
 
-              const apptDate = new Date(appt.date);
               const isToday =
-                apptDate.toDateString() === now.toDateString();
+              apptDateTime.toDateString() === now.toDateString();
 
               const message = isToday
                 ? `Reminder: You have an appointment for ${serviceName} with ${doctorName} at ${appointmentTime} today`
@@ -110,7 +115,7 @@ function startReminderWorker() {
         }
       }
     });
-  }, 300000); // every 5 minutes
+  }, 60000); 
 }
 
 module.exports = startReminderWorker;
