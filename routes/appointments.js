@@ -773,5 +773,34 @@ router.get("/user/:user_id", (req, res) => {
   );
 });
 
+/*
+|--------------------------------------------------
+| UPDATE STATUS (ARRIVED / NO SHOW)
+|--------------------------------------------------
+*/
+router.put("/:id/status", (req, res) => {
+  const { id } = req.params;
+  const { status } = req.body;
+
+  const allowed = ["arrived", "no_show", "completed"];
+
+  if (!allowed.includes(status)) {
+    return res.json({ success: false, message: "Invalid status" });
+  }
+
+  db.query(
+    "UPDATE appointments SET status = ? WHERE id = ?",
+    [status, id],
+    (err) => {
+      if (err) {
+        console.error(err);
+        return res.json({ success: false });
+      }
+
+      res.json({ success: true });
+    }
+  );
+});
+
 
 module.exports = router;
