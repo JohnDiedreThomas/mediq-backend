@@ -65,13 +65,13 @@ function startReminderWorker() {
         return;
       }
 
-      const now = new Date();
+      const now = new Date(new Date().toLocaleString("en-US", { timeZone: "Asia/Manila" }));
 
       for (const appt of rows) {
         try {
-          const apptDateTime = new Date(
-            appt.date + "T" + convertTo24Hour(appt.time)
-          );
+            const apptDateTime = new Date(
+                new Date(appt.date + " " + appt.time).toLocaleString("en-US", { timeZone: "Asia/Manila" })
+              );
 
           const diffMinutes = (apptDateTime - now) / (1000 * 60);
 
