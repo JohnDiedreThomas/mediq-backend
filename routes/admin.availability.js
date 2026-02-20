@@ -16,7 +16,7 @@ router.get("/:doctorId", (req, res) => {
   
     const sql = `
     SELECT
-      DATE(a.date) AS date,
+       DATE_FORMAT(a.date,'%Y-%m-%d') AS date,
       CASE
         WHEN MAX(a.is_closed) = 1 THEN 'closed'
         WHEN SUM(
@@ -43,7 +43,7 @@ router.get("/:doctorId", (req, res) => {
   
       const availability = {};
       rows.forEach(r => {
-        availability[r.date.toISOString().split("T")[0]] = r.status;
+        availability[r.date] = r.status;
       });
   
       res.json({
@@ -286,12 +286,14 @@ router.put("/slot/:slotId", (req, res) => {
 router.delete("/slot/:slotId", (req, res) => {
   const { slotId } = req.params;
 
+  // 1️⃣ get slot info first
   db.query(
-    "SELECT booked_slots FROM doctor_time_slots WHERE id = ?",
+    "SELECT doctor_id, date, booked_slots FROM doctor_time_slots WHERE id = ?",
     [slotId],
     (err, rows) => {
-      if (err || rows.length === 0)
+      if (err || rows.length === 0) {
         return res.json({ success: false });
+      }
 
       if (rows[0].booked_slots > 0) {
         return res.json({
@@ -300,10 +302,34 @@ router.delete("/slot/:slotId", (req, res) => {
         });
       }
 
+      const doctorId = rows[0].doctor_id;
+      const date = rows[0].date;
+
+      // 2️⃣ delete slot
       db.query(
         "DELETE FROM doctor_time_slots WHERE id = ?",
         [slotId],
-        () => res.json({ success: true })
+        () => {
+
+          // 3️⃣ check if any slots remain
+          db.query(
+            "SELECT COUNT(*) AS total FROM doctor_time_slots WHERE doctor_id = ? AND DATE(date) = DATE(?)",
+            [doctorId, date],
+            (err2, rows2) => {
+
+              if (rows2[0].total === 0) {
+                // 4️⃣ remove availability
+                db.query(
+                  "DELETE FROM doctor_availability WHERE doctor_id = ? AND DATE(date) = DATE(?)",
+                  [doctorId, date]
+                );
+              }
+
+              res.json({ success: true });
+            }
+          );
+
+        }
       );
     }
   );
