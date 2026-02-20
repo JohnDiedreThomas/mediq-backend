@@ -15,6 +15,7 @@ router.get("/:doctorId/availability", (req, res) => {
     SELECT
       DATE(a.date) AS date,
       CASE
+        WHEN COUNT(s.id) = 0 THEN 'no_slots'
         WHEN SUM(s.total_slots - s.booked_slots) > 0 THEN 'available'
         ELSE 'no_slots'
       END AS status
@@ -24,6 +25,12 @@ router.get("/:doctorId/availability", (req, res) => {
       AND DATE(s.date) = DATE(a.date)
     WHERE a.doctor_id = ?
       AND DATE(a.date) >= CURDATE()
+      AND EXISTS (
+        SELECT 1
+        FROM doctor_time_slots ts
+        WHERE ts.doctor_id = a.doctor_id
+        AND DATE(ts.date) = DATE(a.date)
+      )
     GROUP BY DATE(a.date)
   `;
 
