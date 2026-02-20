@@ -12,17 +12,18 @@ router.get("/:doctorId/availability", (req, res) => {
   const { doctorId } = req.params;
 
   const sql = `
-  SELECT
-    DATE_FORMAT(date,'%Y-%m-%d') AS date,
-    CASE
-      WHEN SUM(total_slots - booked_slots) > 0 THEN 'available'
-      ELSE 'no_slots'
-    END AS status
-  FROM doctor_time_slots
-  WHERE doctor_id = ?
-    AND DATE(date) >= CURDATE()
-  GROUP BY DATE(date)
-`;
+   SELECT
+      DATE_FORMAT(DATE(date),'%Y-%m-%d') AS date,
+      CASE
+        WHEN SUM(total_slots - booked_slots) > 0 THEN 'available'
+        ELSE 'no_slots'
+      END AS status
+    FROM doctor_time_slots
+    WHERE doctor_id = ?
+      AND DATE(date) >= CURDATE()
+    GROUP BY DATE(date)
+    ORDER BY DATE(date)
+  `;
 
   db.query(sql, [doctorId], (err, rows) => {
     if (err) {
