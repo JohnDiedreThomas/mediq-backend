@@ -13,39 +13,31 @@ router.get("/:doctorId/availability", (req, res) => {
 
   const sql = `
     SELECT
-      DATE(a.date) AS date,
-      CASE
-        WHEN COUNT(s.id) = 0 THEN 'no_slots'
-        WHEN SUM(s.total_slots - s.booked_slots) > 0 THEN 'available'
-        ELSE 'no_slots'
-      END AS status
-    FROM doctor_availability a
-    LEFT JOIN doctor_time_slots s
-      ON s.doctor_id = a.doctor_id
-      AND DATE(s.date) = DATE(a.date)
-    WHERE a.doctor_id = ?
-      AND DATE(a.date) >= CURDATE()
-      AND EXISTS (
-        SELECT 1
-        FROM doctor_time_slots ts
-        WHERE ts.doctor_id = a.doctor_id
-        AND DATE(ts.date) = DATE(a.date)
-      )
-    GROUP BY DATE(a.date)
+  DATE(a.date) AS date,
+  CASE
+    WHEN COUNT(s.id) = 0 THEN 'no_slots'
+    WHEN SUM(s.total_slots - s.booked_slots) > 0 THEN 'available'
+    ELSE 'no_slots'
+  END AS status
+FROM doctor_availability a
+LEFT JOIN doctor_time_slots s
+  ON s.doctor_id = a.doctor_id
+  AND DATE(s.date) = DATE(a.date)
+WHERE a.doctor_id = ?
+AND DATE(a.date) >= CURDATE()
+GROUP BY DATE(a.date);
   `;
 
   db.query(sql, [doctorId], (err, rows) => {
     if (err) {
-      console.error("AVAILABILITY ERROR:", err);
+      console.error(err);
       return res.status(500).json([]);
     }
 
-    const result = rows.map(r => ({
+    res.json(rows.map(r => ({
       date: new Date(r.date).toISOString().split("T")[0],
       status: r.status,
-    }));
-
-    res.json(result);
+    })));
   });
 });
 /*
