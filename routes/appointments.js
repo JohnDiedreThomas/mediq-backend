@@ -572,9 +572,8 @@ router.put("/:id/approve", (req, res) => {
       }
 
       const appointmentTime24 = convertTo24Hour(rows[0].time);
-      const apptDateTime = new Date(`${rows[0].date}T${appointmentTime24}+08:00`);
-
-      const now = new Date(Date.now() + 8 * 60 * 60 * 1000);
+      const apptDateTime = new Date(`${rows[0].date}T${appointmentTime24}`);
+      const now = new Date();
 
       if (apptDateTime < now) {
         return res.json({
@@ -633,12 +632,11 @@ router.put("/:id/approve", (req, res) => {
 
               // Instant reminder
               const appointmentTime24 = convertTo24Hour(appt.time);
-              const apptDateTime = new Date(`${appt.date}T${appointmentTime24}+08:00`);
-
-              const now = new Date(Date.now() + 8 * 60 * 60 * 1000);
+              const apptDateTime = new Date(`${appt.date}T${appointmentTime24}`);
+              const now = new Date();
               const diffMinutes = (apptDateTime - now) / (1000 * 60);
 
-              if (diffMinutes >= 0 && diffMinutes <= 60 && appt.push_token) {
+              if (diffMinutes >= -10 && diffMinutes <= 60 && appt.push_token) {
                 const message = `Reminder: You have an appointment for ${appt.service} with ${appt.doctor_name} at ${appt.time} today`;
 
                 await sendPushNotification(

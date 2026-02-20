@@ -155,7 +155,7 @@ router.get("/nearby", (req, res) => {
       u.name,
       u.latitude,
       u.longitude,
-      u.last_location_update
+      u.last_location_update,
       a.arrived_at
     FROM users u
     JOIN appointments a ON a.user_id = u.id

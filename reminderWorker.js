@@ -65,23 +65,21 @@ function startReminderWorker() {
         return;
       }
 
-      const now = new Date(Date.now() + 8 * 60 * 60 * 1000);
+      const now = new Date();
 
       for (const appt of rows) {
         try {
           
           const appointmentTime24 = convertTo24Hour(appt.time);
 
-          const apptDateTime = new Date(
-            `${appt.date}T${appointmentTime24}+08:00`
-          );
+          const apptDateTime = new Date(`${appt.date}T${appointmentTime24}`);
 
           const diffMinutes = (apptDateTime - now) / (1000 * 60);
           console.log("📍 Appointment ID:", appt.id);
-    console.log("🕒 Manila now:", now);
-    console.log("📅 Appointment time:", apptDateTime);
-    console.log("⏱ Diff minutes:", diffMinutes);
-          // 🔔 Send reminder within 60 minutes
+          console.log("🕒 PH now:", now);
+          console.log("📅 Appointment time:", apptDateTime);
+          console.log("⏱ Diff minutes:", diffMinutes);
+           // 🔔 Send reminder within 60 minutes
           if (diffMinutes >= -10 && diffMinutes <= 60) {
             if (appt.push_token) {
               const serviceName = appt.service || "Appointment";
