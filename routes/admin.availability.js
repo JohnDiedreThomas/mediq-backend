@@ -12,11 +12,11 @@ router.use(adminAuth);
 |--------------------------------------------------------------------------
 */
 router.get("/:doctorId", (req, res) => {
-    const { doctorId } = req.params;
-  
-    const sql = `
+  const { doctorId } = req.params;
+
+  const sql = `
     SELECT
-      DATE_FORMAT(DATE(date),'%Y-%m-%d') AS date,
+      DATE(date) AS date,
       CASE
         WHEN SUM(total_slots - booked_slots) > 0 THEN 'available'
         ELSE 'no_slots'
@@ -26,24 +26,26 @@ router.get("/:doctorId", (req, res) => {
     GROUP BY DATE(date)
     ORDER BY DATE(date)
   `;
-  
-    db.query(sql, [doctorId], (err, rows) => {
-      if (err) {
-        console.error("ADMIN AVAILABILITY ERROR:", err);
-        return res.json({ success: false, availability: {} });
-      }
-  
-      const availability = {};
-      rows.forEach(r => {
-        availability[r.date] = r.status;
-      });
-  
-      res.json({
-        success: true,
-        availability,
-      });
+
+  db.query(sql, [doctorId], (err, rows) => {
+    if (err) {
+      console.error("ADMIN AVAIL ERROR:", err);
+      return res.json({ success: false, availability: {} });
+    }
+
+    const availability = {};
+
+    rows.forEach(r => {
+      const dateStr = new Date(r.date).toISOString().split("T")[0];
+      availability[dateStr] = r.status;
+    });
+
+    res.json({
+      success: true,
+      availability,
     });
   });
+});
 /*
 |--------------------------------------------------------------------------
 | ADD availability date
