@@ -78,8 +78,15 @@ function startReminderWorker() {
           const diffMinutes = (apptDateTime - now) / (1000 * 60);
 
           console.log("📍 ID:", appt.id);
-          console.log("🕒 Now:", now);
-          console.log("📅 Appt:", apptDateTime);
+          console.log(
+            "🕒 Now PH:",
+            now.toLocaleString("en-PH", { timeZone: "Asia/Manila" })
+          );
+          
+          console.log(
+            "📅 Appt PH:",
+            apptDateTime.toLocaleString("en-PH", { timeZone: "Asia/Manila" })
+          );
           console.log("⏱ Diff:", diffMinutes);
 
           if (diffMinutes >= -10 && diffMinutes <= 60) {
