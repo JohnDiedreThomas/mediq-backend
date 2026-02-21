@@ -6,6 +6,7 @@ const db = require("../db");
    SUBMIT REVIEW
 ===================== */
 router.post("/", (req, res) => {
+  console.log("🔥 Review request received:", req.body);
   const { doctor_id, user_id, rating, comment } = req.body;
 
   if (!doctor_id || !user_id || !rating) {
