@@ -33,12 +33,12 @@ router.post("/", (req, res) => {
    GET REVIEWS BY DOCTOR
 ===================== */
 router.get("/:doctorId", (req, res) => {
-  const { doctorId } = req.params;
+  const doctorId = parseInt(req.params.doctorId);
 
   const sql = `
-    SELECT r.*, u.name AS patient_name
+    SELECT r.*, IFNULL(u.name, 'Patient') AS patient_name
     FROM doctor_reviews r
-    JOIN users u ON r.user_id = u.id
+    LEFT JOIN users u ON r.user_id = u.id
     WHERE r.doctor_id = ?
     ORDER BY r.created_at DESC
   `;
