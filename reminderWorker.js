@@ -71,10 +71,7 @@ function startReminderWorker() {
           | SAFE DATE EXTRACTION (NO timezone shifting)
           |---------------------------------------------------
           */
-          const dateString =
-            typeof appt.date === "string"
-              ? appt.date
-              : appt.date.toISOString().split("T")[0];
+          const dateString = appt.date;
 
           const time24 = convertTo24Hour(appt.time);
 

@@ -9,8 +9,10 @@ const db = mysql.createPool({
   waitForConnections: true,
   connectionLimit: 10,
   queueLimit: 0,
-  
+
   timezone: "+08:00",
+
+  dateStrings: true // ⭐ IMPORTANT
 });
 
 console.log("MySQL Pool Ready ✅");
