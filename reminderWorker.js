@@ -3,18 +3,26 @@ const { sendPushNotification } = require("./pushNotification");
 
 /*
 |-----------------------------------------------------------
-| Convert 12-hour time → 24-hour
+| Convert time safely (handles Unicode spaces)
 |-----------------------------------------------------------
 */
 function convertTo24Hour(timeStr) {
   if (!timeStr) return "00:00:00";
 
-  const parts = timeStr.trim().split(" ");
+  // normalize weird spaces
+  timeStr = timeStr
+    .replace(/\u202F/g, " ")
+    .replace(/\u00A0/g, " ")
+    .trim();
 
-  if (parts.length === 1) return parts[0] + ":00";
+  const match = timeStr.match(/(\d{1,2}):(\d{2})\s*(AM|PM)/i);
 
-  const [time, modifier] = parts;
-  let [hours, minutes] = time.split(":");
+  if (!match) {
+    console.log("⚠️ Bad time format:", timeStr);
+    return null;
+  }
+
+  let [_, hours, minutes, modifier] = match;
 
   hours = parseInt(hours, 10);
 
@@ -33,7 +41,7 @@ function startReminderWorker() {
   console.log("🕒 Reminder worker running...");
 
   setInterval(() => {
-    console.log("Checking appointment reminders...");
+    console.log("🔎 Checking appointment reminders...");
 
     const sql = `
       SELECT 
@@ -41,6 +49,7 @@ function startReminderWorker() {
         a.date,
         a.time,
         a.service,
+        a.reminder_sent,
         u.push_token,
         d.name AS doctor_name
       FROM appointments a
@@ -52,7 +61,7 @@ function startReminderWorker() {
 
     db.query(sql, async (err, rows) => {
       if (err) {
-        console.error("Reminder query error:", err);
+        console.error("❌ Reminder query error:", err);
         return;
       }
 
@@ -60,18 +69,23 @@ function startReminderWorker() {
 
       for (const appt of rows) {
         try {
-          // ✅ HANDLE DATE SAFELY
           const dateString =
             typeof appt.date === "string"
               ? appt.date
               : appt.date.toISOString().slice(0, 10);
 
-          const appointmentTime24 = convertTo24Hour(appt.time);
+          const time24 = convertTo24Hour(appt.time);
 
-          const apptDateTime = new Date(`${dateString}T${appointmentTime24}+08:00`);
+          if (!time24) {
+            console.log("❌ Invalid appointment:", appt);
+            continue;
+          }
+
+          // PH timezone offset
+          const apptDateTime = new Date(`${dateString}T${time24}+08:00`);
 
           if (isNaN(apptDateTime.getTime())) {
-            console.log("❌ Invalid appointment:", appt);
+            console.log("❌ Invalid datetime:", appt);
             continue;
           }
 
@@ -82,13 +96,13 @@ function startReminderWorker() {
             "🕒 Now PH:",
             now.toLocaleString("en-PH", { timeZone: "Asia/Manila" })
           );
-          
           console.log(
             "📅 Appt PH:",
             apptDateTime.toLocaleString("en-PH", { timeZone: "Asia/Manila" })
           );
-          console.log("⏱ Diff:", diffMinutes);
+          console.log("⏱ Diff:", diffMinutes.toFixed(2));
 
+          // reminder window
           if (diffMinutes >= -10 && diffMinutes <= 60) {
             if (appt.push_token) {
               const message = `Reminder: You have an appointment for ${appt.service} with ${appt.doctor_name} at ${appt.time}`;
@@ -108,7 +122,7 @@ function startReminderWorker() {
             );
           }
         } catch (error) {
-          console.error("Reminder error:", error);
+          console.error("❌ Reminder error:", error);
         }
       }
     });
