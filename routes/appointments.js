@@ -56,6 +56,7 @@ router.post("/", (req, res) => {
   } = req.body;
 
   const appointmentDateTime = new Date(`${date} ${time}`);
+  const now = new Date();
 
   if (appointmentDateTime < now) {
     return res.json({
