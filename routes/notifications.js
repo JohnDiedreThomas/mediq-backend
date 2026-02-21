@@ -55,9 +55,10 @@ router.get("/:userId", (req, res) => {
   db.query(sql, [userId], (err, rows) => {
     if (err) return res.json({ success: false });
 
+    // send raw timestamps — let frontend handle formatting
     res.json({ success: true, notifications: rows });
   });
-});
+});;
 
 /* DELETE notification */
 router.delete("/:id", (req, res) => {

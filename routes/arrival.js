@@ -186,7 +186,38 @@ router.get("/nearby", (req, res) => {
         return d <= CLINIC.radius + BUFFER;
       });
 
-      res.json({ success: true, patients: inside });
+      const patients = inside.map(p => {
+
+        const distance = getDistance(
+          CLINIC.latitude,
+          CLINIC.longitude,
+          p.latitude,
+          p.longitude
+        );
+      
+        let waitingMinutes = null;
+        if (p.arrived_at) {
+          const diff = Date.now() - new Date(p.arrived_at).getTime();
+          waitingMinutes = Math.floor(diff / 60000);
+        }
+      
+        const lastSeenSeconds = Math.floor(
+          (Date.now() - new Date(p.last_location_update).getTime()) / 1000
+        );
+      
+        const status = lastSeenSeconds <= 60 ? "Live" : "Stale";
+      
+        return {
+          ...p,
+          distance: Math.round(distance),
+          waitingMinutes,
+          lastSeenSeconds,
+          status
+        };
+      
+      });
+      
+      res.json({ success: true, patients });
 
     }
   );
