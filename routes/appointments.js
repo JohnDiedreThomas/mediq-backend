@@ -578,7 +578,7 @@ router.put("/:id/approve", (req, res) => {
       const appointmentTime24 = convertTo24Hour(rows[0].time);
 
       // ✅ SIMPLE — NO timezone math
-      const apptDateTime = new Date(`${rows[0].date} ${appointmentTime24}`);
+      const apptDateTime = new Date(`${rows[0].date}T${appointmentTime24}+08:00`);
       const now = new Date();
 
       console.log("📅 Approve check:", apptDateTime, now);
@@ -641,7 +641,7 @@ router.put("/:id/approve", (req, res) => {
 
               // instant reminder
               const appointmentTime24 = convertTo24Hour(appt.time);
-              const apptDateTime = new Date(`${appt.date} ${appointmentTime24}`);
+              const apptDateTime = new Date(`${appt.date}T${appointmentTime24}+08:00`);
               const now = new Date();
 
               const diffMinutes = (apptDateTime - now) / (1000 * 60);

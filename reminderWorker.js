@@ -68,7 +68,7 @@ function startReminderWorker() {
 
           const appointmentTime24 = convertTo24Hour(appt.time);
 
-          const apptDateTime = new Date(`${dateString}T${appointmentTime24}`);
+          const apptDateTime = new Date(`${dateString}T${appointmentTime24}+08:00`);
 
           if (isNaN(apptDateTime.getTime())) {
             console.log("❌ Invalid appointment:", appt);
