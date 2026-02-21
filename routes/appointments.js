@@ -544,7 +544,6 @@ router.get("/doctor/:doctor_id", (req, res) => {
 |--------------------------------------------------------------------------
 */
 
-// Helper — convert time to 24h
 function convertTo24Hour(timeStr) {
   if (!timeStr) return "00:00:00";
 
@@ -578,9 +577,8 @@ router.put("/:id/approve", (req, res) => {
 
       const appointmentTime24 = convertTo24Hour(rows[0].time);
 
-      // SAFE DATE BUILD (fix timezone bug)
-      const dateOnly = rows[0].date.toISOString().slice(0, 10);
-      const apptDateTime = new Date(`${dateOnly}T${appointmentTime24}`);
+      // ✅ SIMPLE — NO timezone math
+      const apptDateTime = new Date(`${rows[0].date} ${appointmentTime24}`);
       const now = new Date();
 
       console.log("📅 Approve check:", apptDateTime, now);
@@ -621,7 +619,7 @@ router.put("/:id/approve", (req, res) => {
 
               const appt = rows[0];
 
-              // Save notification
+              // save notification
               db.query(
                 `INSERT INTO notifications (user_id, title, message, is_read)
                  VALUES (?, ?, ?, 0)`,
@@ -632,7 +630,7 @@ router.put("/:id/approve", (req, res) => {
                 ]
               );
 
-              // Approval push
+              // approval push
               if (appt.push_token) {
                 await sendPushNotification(
                   appt.push_token,
@@ -641,11 +639,9 @@ router.put("/:id/approve", (req, res) => {
                 );
               }
 
-              // ⭐ Instant reminder check
+              // instant reminder
               const appointmentTime24 = convertTo24Hour(appt.time);
-              const dateOnly = appt.date.toISOString().slice(0, 10);
-
-              const apptDateTime = new Date(`${dateOnly}T${appointmentTime24}`);
+              const apptDateTime = new Date(`${appt.date} ${appointmentTime24}`);
               const now = new Date();
 
               const diffMinutes = (apptDateTime - now) / (1000 * 60);
