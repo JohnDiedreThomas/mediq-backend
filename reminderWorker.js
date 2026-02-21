@@ -49,7 +49,6 @@ function startReminderWorker() {
         a.date,
         a.time,
         a.service,
-        a.user_id,
         u.push_token,
         d.name AS doctor_name
       FROM appointments a
@@ -65,50 +64,31 @@ function startReminderWorker() {
         return;
       }
 
+      const now = new Date();
+
       for (const appt of rows) {
         try {
-          
-      // Convert time to 24h
-// Convert time to 24h
-const appointmentTime24 = convertTo24Hour(appt.time);
+          const appointmentTime24 = convertTo24Hour(appt.time);
 
-// Convert DB date safely (UTC → PH)
-const dbDate = new Date(appt.date);
+          // ✅ SAFE DATE BUILD
+          const dateOnly = appt.date.toISOString().slice(0, 10);
+          const apptDateTime = new Date(`${dateOnly}T${appointmentTime24}`);
 
-const year = dbDate.getUTCFullYear();
-const month = String(dbDate.getUTCMonth() + 1).padStart(2, "0");
-const day = String(dbDate.getUTCDate()).padStart(2, "0");
+          if (isNaN(apptDateTime.getTime())) {
+            console.log("❌ Invalid appointment:", appt);
+            continue;
+          }
 
-// Build PH datetime explicitly
-const apptDateTime = new Date(`${year}-${month}-${day}T${appointmentTime24}+08:00`);
+          const diffMinutes = (apptDateTime - now) / (1000 * 60);
 
-if (isNaN(apptDateTime.getTime())) {
-  console.log("❌ Invalid appointment time:", appt.date, appt.time);
-  continue;
-}
+          console.log("📍 ID:", appt.id);
+          console.log("🕒 Now:", now);
+          console.log("📅 Appt:", apptDateTime);
+          console.log("⏱ Diff:", diffMinutes);
 
-// PH current time
-const now = new Date(new Date().toLocaleString("en-US", { timeZone: "Asia/Manila" }));
-
-const diffMinutes = (apptDateTime - now) / (1000 * 60);
-
-console.log("📍 Appointment ID:", appt.id);
-console.log("🕒 PH now:", now);
-console.log("📅 Appointment time:", apptDateTime);
-console.log("⏱ Diff minutes:", diffMinutes);
-           // 🔔 Send reminder within 60 minutes
           if (diffMinutes >= -10 && diffMinutes <= 60) {
             if (appt.push_token) {
-              const serviceName = appt.service || "Appointment";
-              const doctorName = appt.doctor_name || "Doctor";
-              const appointmentTime = appt.time;
-
-              const isToday =
-              apptDateTime.toDateString() === now.toDateString();
-
-              const message = isToday
-                ? `Reminder: You have an appointment for ${serviceName} with ${doctorName} at ${appointmentTime} today`
-                : `Reminder: You have an appointment for ${serviceName} with ${doctorName} at ${appointmentTime} tomorrow`;
+              const message = `Reminder: You have an appointment for ${appt.service} with ${appt.doctor_name} at ${appt.time}`;
 
               await sendPushNotification(
                 appt.push_token,
@@ -116,21 +96,20 @@ console.log("⏱ Diff minutes:", diffMinutes);
                 message
               );
 
-              console.log("Reminder sent for appointment:", appt.id);
+              console.log("✅ Reminder sent:", appt.id);
             }
 
-            // Mark reminder sent
             db.query(
               "UPDATE appointments SET reminder_sent = 1 WHERE id = ?",
               [appt.id]
             );
           }
         } catch (error) {
-          console.error("Reminder processing error:", error);
+          console.error("Reminder error:", error);
         }
       }
     });
-  }, 60000); 
+  }, 60000);
 }
 
 module.exports = startReminderWorker;

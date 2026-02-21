@@ -543,6 +543,7 @@ router.get("/doctor/:doctor_id", (req, res) => {
 | APPROVE APPOINTMENT (STAFF)
 |--------------------------------------------------------------------------
 */
+
 // Helper — convert time to 24h
 function convertTo24Hour(timeStr) {
   if (!timeStr) return "00:00:00";
@@ -560,30 +561,29 @@ function convertTo24Hour(timeStr) {
 
   return `${String(hours).padStart(2, "0")}:${minutes}:00`;
 }
+
 router.put("/:id/approve", (req, res) => {
   const { id } = req.params;
+
+  console.log("✅ APPROVE HIT:", id);
 
   db.query(
     "SELECT date, time FROM appointments WHERE id = ?",
     [id],
     (err, rows) => {
       if (err || rows.length === 0) {
+        console.log("❌ Appointment not found");
         return res.json({ success: false });
       }
 
       const appointmentTime24 = convertTo24Hour(rows[0].time);
 
-// Extract UTC date safely
-const dbDate = new Date(rows[0].date);
+      // SAFE DATE BUILD (fix timezone bug)
+      const dateOnly = rows[0].date.toISOString().slice(0, 10);
+      const apptDateTime = new Date(`${dateOnly}T${appointmentTime24}`);
+      const now = new Date();
 
-const year = dbDate.getUTCFullYear();
-const month = String(dbDate.getUTCMonth() + 1).padStart(2, "0");
-const day = String(dbDate.getUTCDate()).padStart(2, "0");
-
-// Build PH datetime
-const apptDateTime = new Date(`${year}-${month}-${day}T${appointmentTime24}+08:00`);
-
-const now = new Date(new Date().toLocaleString("en-US", { timeZone: "Asia/Manila" }));
+      console.log("📅 Approve check:", apptDateTime, now);
 
       if (apptDateTime < now) {
         return res.json({
@@ -600,6 +600,7 @@ const now = new Date(new Date().toLocaleString("en-US", { timeZone: "Asia/Manila
         [id],
         (err, result) => {
           if (err || result.affectedRows === 0) {
+            console.log("❌ Update failed");
             return res.json({
               success: false,
               message: "Cannot approve appointment",
@@ -640,20 +641,16 @@ const now = new Date(new Date().toLocaleString("en-US", { timeZone: "Asia/Manila
                 );
               }
 
-              // Instant reminder
+              // ⭐ Instant reminder check
               const appointmentTime24 = convertTo24Hour(appt.time);
+              const dateOnly = appt.date.toISOString().slice(0, 10);
 
-const dbDate = new Date(appt.date);
+              const apptDateTime = new Date(`${dateOnly}T${appointmentTime24}`);
+              const now = new Date();
 
-const year = dbDate.getUTCFullYear();
-const month = String(dbDate.getUTCMonth() + 1).padStart(2, "0");
-const day = String(dbDate.getUTCDate()).padStart(2, "0");
+              const diffMinutes = (apptDateTime - now) / (1000 * 60);
 
-const apptDateTime = new Date(`${year}-${month}-${day}T${appointmentTime24}+08:00`);
-
-const now = new Date(new Date().toLocaleString("en-US", { timeZone: "Asia/Manila" }));
-
-const diffMinutes = (apptDateTime - now) / (1000 * 60);
+              console.log("⏱ Instant diff:", diffMinutes);
 
               if (diffMinutes >= -10 && diffMinutes <= 60 && appt.push_token) {
                 const message = `Reminder: You have an appointment for ${appt.service} with ${appt.doctor_name} at ${appt.time} today`;
