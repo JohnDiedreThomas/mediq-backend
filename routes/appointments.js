@@ -572,7 +572,12 @@ router.put("/:id/approve", (req, res) => {
       }
 
       const appointmentTime24 = convertTo24Hour(rows[0].time);
-      const apptDateTime = new Date(`${rows[0].date}T${appointmentTime24}`);
+
+      // normalize DB date to PH date
+      const dateOnly = new Date(rows[0].date)
+        .toLocaleDateString("en-CA", { timeZone: "Asia/Manila" });
+      
+      const apptDateTime = new Date(`${dateOnly}T${appointmentTime24}`);
       const now = new Date();
 
       if (apptDateTime < now) {
@@ -632,8 +637,12 @@ router.put("/:id/approve", (req, res) => {
 
               // Instant reminder
               const appointmentTime24 = convertTo24Hour(appt.time);
-              const apptDateTime = new Date(`${appt.date}T${appointmentTime24}`);
-              const now = new Date();
+
+const dateOnly = new Date(appt.date)
+  .toLocaleDateString("en-CA", { timeZone: "Asia/Manila" });
+
+const apptDateTime = new Date(`${dateOnly}T${appointmentTime24}`);
+const now = new Date();
               const diffMinutes = (apptDateTime - now) / (1000 * 60);
 
               if (diffMinutes >= -10 && diffMinutes <= 60 && appt.push_token) {

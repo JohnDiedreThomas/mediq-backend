@@ -70,9 +70,15 @@ function startReminderWorker() {
       for (const appt of rows) {
         try {
           
-          const appointmentTime24 = convertTo24Hour(appt.time);
+      // Convert time to 24h
+const appointmentTime24 = convertTo24Hour(appt.time);
 
-          const apptDateTime = new Date(`${appt.date}T${appointmentTime24}`);
+// Normalize DB date (handles ISO like 2026-02-19T16:00:00Z)
+const dateOnly = new Date(appt.date)
+  .toLocaleDateString("en-CA", { timeZone: "Asia/Manila" });
+
+// Build safe datetime
+const apptDateTime = new Date(`${dateOnly}T${appointmentTime24}`);
 
 if (isNaN(apptDateTime.getTime())) {
   console.log("❌ Invalid appointment time:", appt.date, appt.time);
