@@ -2,18 +2,24 @@ const express = require("express");
 const router = express.Router();
 const db = require("../db");
 
-/* =====================
-   GET ALL DOCTORS
-===================== */
-router.get("/", (req, res) => {
-  const sql =
-    "SELECT id, name, specialty, image  FROM doctors WHERE is_active = 1";
+
+router.get("/with-ratings", (req, res) => {
+  const sql = `
+   SELECT d.id, d.name, d.specialty, d.image,
+IFNULL(AVG(r.rating), 0) AS avg_rating,
+COUNT(r.id) AS review_count
+FROM doctors d
+LEFT JOIN doctor_reviews r ON d.id = r.doctor_id
+WHERE d.is_active = 1
+GROUP BY d.id, d.name, d.specialty, d.image
+  `;
 
   db.query(sql, (err, results) => {
     if (err) {
       console.error(err);
-      return res.status(500).json([]);
+      return res.json({ success: false });
     }
+
     res.json({
       success: true,
       doctors: results,
@@ -46,6 +52,28 @@ router.get("/by-service/:serviceId", (req, res) => {
 });
 
 
+
+/* =====================
+   GET ALL DOCTORS
+===================== */
+router.get("/", (req, res) => {
+  const sql =
+    "SELECT id, name, specialty, image  FROM doctors WHERE is_active = 1";
+
+  db.query(sql, (err, results) => {
+    if (err) {
+      console.error(err);
+      return res.status(500).json([]);
+    }
+    res.json({
+      success: true,
+      doctors: results,
+    });
+  });
+});
+
+
+
 /* =====================
    GET SINGLE DOCTOR (DETAIL PAGE)
 ===================== */
@@ -66,6 +94,8 @@ router.get("/:id", (req, res) => {
     });
   });
 });
+
+
 
 
 module.exports = router;
