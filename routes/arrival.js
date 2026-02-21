@@ -164,7 +164,6 @@ router.get("/nearby", (req, res) => {
     AND DATE(a.date) = CURDATE()
     AND u.latitude IS NOT NULL
     AND u.longitude IS NOT NULL
-    AND TIMESTAMPDIFF(SECOND, u.last_location_update, NOW()) <= 60
     `,
     (err, rows) => {
 
@@ -196,14 +195,14 @@ router.get("/nearby", (req, res) => {
         );
       
         let waitingMinutes = null;
-        if (p.arrived_at) {
+        if (p.arrived_at && !isNaN(new Date(p.arrived_at))) {
           const diff = Date.now() - new Date(p.arrived_at).getTime();
           waitingMinutes = Math.floor(diff / 60000);
         }
       
-        const lastSeenSeconds = Math.floor(
-          (Date.now() - new Date(p.last_location_update).getTime()) / 1000
-        );
+        const lastSeenSeconds = p.last_location_update
+        ? Math.floor((Date.now() - new Date(p.last_location_update).getTime()) / 1000)
+        : null;
       
         const status = lastSeenSeconds <= 60 ? "Live" : "Stale";
       
