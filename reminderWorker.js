@@ -74,6 +74,11 @@ function startReminderWorker() {
 
           const apptDateTime = new Date(`${appt.date}T${appointmentTime24}`);
 
+if (isNaN(apptDateTime.getTime())) {
+  console.log("❌ Invalid appointment time:", appt.date, appt.time);
+  continue;
+}
+
           const diffMinutes = (apptDateTime - now) / (1000 * 60);
           console.log("📍 Appointment ID:", appt.id);
           console.log("🕒 PH now:", now);
