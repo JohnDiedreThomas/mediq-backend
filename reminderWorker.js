@@ -65,31 +65,37 @@ function startReminderWorker() {
         return;
       }
 
-      const now = new Date();
-
       for (const appt of rows) {
         try {
           
       // Convert time to 24h
+// Convert time to 24h
 const appointmentTime24 = convertTo24Hour(appt.time);
 
-// Normalize DB date (handles ISO like 2026-02-19T16:00:00Z)
-const dateOnly = new Date(appt.date)
-  .toLocaleDateString("en-CA", { timeZone: "Asia/Manila" });
+// Convert DB date safely (UTC → PH)
+const dbDate = new Date(appt.date);
 
-// Build safe datetime
-const apptDateTime = new Date(`${dateOnly}T${appointmentTime24}`);
+const year = dbDate.getUTCFullYear();
+const month = String(dbDate.getUTCMonth() + 1).padStart(2, "0");
+const day = String(dbDate.getUTCDate()).padStart(2, "0");
+
+// Build PH datetime explicitly
+const apptDateTime = new Date(`${year}-${month}-${day}T${appointmentTime24}+08:00`);
 
 if (isNaN(apptDateTime.getTime())) {
   console.log("❌ Invalid appointment time:", appt.date, appt.time);
   continue;
 }
 
-          const diffMinutes = (apptDateTime - now) / (1000 * 60);
-          console.log("📍 Appointment ID:", appt.id);
-          console.log("🕒 PH now:", now);
-          console.log("📅 Appointment time:", apptDateTime);
-          console.log("⏱ Diff minutes:", diffMinutes);
+// PH current time
+const now = new Date(new Date().toLocaleString("en-US", { timeZone: "Asia/Manila" }));
+
+const diffMinutes = (apptDateTime - now) / (1000 * 60);
+
+console.log("📍 Appointment ID:", appt.id);
+console.log("🕒 PH now:", now);
+console.log("📅 Appointment time:", apptDateTime);
+console.log("⏱ Diff minutes:", diffMinutes);
            // 🔔 Send reminder within 60 minutes
           if (diffMinutes >= -10 && diffMinutes <= 60) {
             if (appt.push_token) {

@@ -56,7 +56,6 @@ router.post("/", (req, res) => {
   } = req.body;
 
   const appointmentDateTime = new Date(`${date} ${time}`);
-  const now = new Date();
 
   if (appointmentDateTime < now) {
     return res.json({
@@ -573,12 +572,17 @@ router.put("/:id/approve", (req, res) => {
 
       const appointmentTime24 = convertTo24Hour(rows[0].time);
 
-      // normalize DB date to PH date
-      const dateOnly = new Date(rows[0].date)
-        .toLocaleDateString("en-CA", { timeZone: "Asia/Manila" });
-      
-      const apptDateTime = new Date(`${dateOnly}T${appointmentTime24}`);
-      const now = new Date();
+// Extract UTC date safely
+const dbDate = new Date(rows[0].date);
+
+const year = dbDate.getUTCFullYear();
+const month = String(dbDate.getUTCMonth() + 1).padStart(2, "0");
+const day = String(dbDate.getUTCDate()).padStart(2, "0");
+
+// Build PH datetime
+const apptDateTime = new Date(`${year}-${month}-${day}T${appointmentTime24}+08:00`);
+
+const now = new Date(new Date().toLocaleString("en-US", { timeZone: "Asia/Manila" }));
 
       if (apptDateTime < now) {
         return res.json({
@@ -638,12 +642,17 @@ router.put("/:id/approve", (req, res) => {
               // Instant reminder
               const appointmentTime24 = convertTo24Hour(appt.time);
 
-const dateOnly = new Date(appt.date)
-  .toLocaleDateString("en-CA", { timeZone: "Asia/Manila" });
+const dbDate = new Date(appt.date);
 
-const apptDateTime = new Date(`${dateOnly}T${appointmentTime24}`);
-const now = new Date();
-              const diffMinutes = (apptDateTime - now) / (1000 * 60);
+const year = dbDate.getUTCFullYear();
+const month = String(dbDate.getUTCMonth() + 1).padStart(2, "0");
+const day = String(dbDate.getUTCDate()).padStart(2, "0");
+
+const apptDateTime = new Date(`${year}-${month}-${day}T${appointmentTime24}+08:00`);
+
+const now = new Date(new Date().toLocaleString("en-US", { timeZone: "Asia/Manila" }));
+
+const diffMinutes = (apptDateTime - now) / (1000 * 60);
 
               if (diffMinutes >= -10 && diffMinutes <= 60 && appt.push_token) {
                 const message = `Reminder: You have an appointment for ${appt.service} with ${appt.doctor_name} at ${appt.time} today`;
