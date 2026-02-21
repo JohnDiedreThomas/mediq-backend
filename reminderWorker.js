@@ -7,18 +7,15 @@ const { sendPushNotification } = require("./pushNotification");
 |-----------------------------------------------------------
 */
 function convertTo24Hour(timeStr) {
-  if (!timeStr) return "00:00:00";
+  if (!timeStr) return null;
 
-  // normalize weird spaces
-  timeStr = timeStr
-    .replace(/\u202F/g, " ")
-    .replace(/\u00A0/g, " ")
-    .trim();
+  // normalize ANY whitespace (unicode safe)
+  timeStr = timeStr.replace(/\s+/gu, " ").trim();
 
   const match = timeStr.match(/(\d{1,2}):(\d{2})\s*(AM|PM)/i);
 
   if (!match) {
-    console.log("⚠️ Bad time format:", timeStr);
+    console.log("⚠️ Bad time format:", JSON.stringify(timeStr));
     return null;
   }
 
@@ -69,10 +66,15 @@ function startReminderWorker() {
 
       for (const appt of rows) {
         try {
+          /*
+          |---------------------------------------------------
+          | SAFE DATE EXTRACTION (NO timezone shifting)
+          |---------------------------------------------------
+          */
           const dateString =
             typeof appt.date === "string"
               ? appt.date
-              : appt.date.toISOString().slice(0, 10);
+              : appt.date.toISOString().split("T")[0];
 
           const time24 = convertTo24Hour(appt.time);
 
@@ -81,7 +83,11 @@ function startReminderWorker() {
             continue;
           }
 
-          // PH timezone offset
+          /*
+          |---------------------------------------------------
+          | Build PH datetime explicitly
+          |---------------------------------------------------
+          */
           const apptDateTime = new Date(`${dateString}T${time24}+08:00`);
 
           if (isNaN(apptDateTime.getTime())) {
@@ -98,11 +104,17 @@ function startReminderWorker() {
           );
           console.log(
             "📅 Appt PH:",
-            apptDateTime.toLocaleString("en-PH", { timeZone: "Asia/Manila" })
+            apptDateTime.toLocaleString("en-PH", {
+              timeZone: "Asia/Manila",
+            })
           );
           console.log("⏱ Diff:", diffMinutes.toFixed(2));
 
-          // reminder window
+          /*
+          |---------------------------------------------------
+          | Reminder window
+          |---------------------------------------------------
+          */
           if (diffMinutes >= -10 && diffMinutes <= 60) {
             if (appt.push_token) {
               const message = `Reminder: You have an appointment for ${appt.service} with ${appt.doctor_name} at ${appt.time}`;
