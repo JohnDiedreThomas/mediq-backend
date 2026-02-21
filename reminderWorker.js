@@ -3,7 +3,7 @@ const { sendPushNotification } = require("./pushNotification");
 
 /*
 |-----------------------------------------------------------
-| Convert 12-hour time (e.g. 4:30 PM) → 24-hour (16:30:00)
+| Convert 12-hour time → 24-hour
 |-----------------------------------------------------------
 */
 function convertTo24Hour(timeStr) {
@@ -11,23 +11,15 @@ function convertTo24Hour(timeStr) {
 
   const parts = timeStr.trim().split(" ");
 
-  // If already 24h format like "16:30"
-  if (parts.length === 1) {
-    return parts[0] + ":00";
-  }
+  if (parts.length === 1) return parts[0] + ":00";
 
   const [time, modifier] = parts;
   let [hours, minutes] = time.split(":");
 
   hours = parseInt(hours, 10);
 
-  if (modifier.toUpperCase() === "PM" && hours !== 12) {
-    hours += 12;
-  }
-
-  if (modifier.toUpperCase() === "AM" && hours === 12) {
-    hours = 0;
-  }
+  if (modifier.toUpperCase() === "PM" && hours !== 12) hours += 12;
+  if (modifier.toUpperCase() === "AM" && hours === 12) hours = 0;
 
   return `${String(hours).padStart(2, "0")}:${minutes}:00`;
 }
@@ -68,11 +60,15 @@ function startReminderWorker() {
 
       for (const appt of rows) {
         try {
+          // ✅ HANDLE DATE SAFELY
+          const dateString =
+            typeof appt.date === "string"
+              ? appt.date
+              : appt.date.toISOString().slice(0, 10);
+
           const appointmentTime24 = convertTo24Hour(appt.time);
 
-          // ✅ SAFE DATE BUILD
-          const dateOnly = appt.date.toISOString().slice(0, 10);
-          const apptDateTime = new Date(`${dateOnly}T${appointmentTime24}`);
+          const apptDateTime = new Date(`${dateString}T${appointmentTime24}`);
 
           if (isNaN(apptDateTime.getTime())) {
             console.log("❌ Invalid appointment:", appt);
