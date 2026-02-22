@@ -1,8 +1,10 @@
+const crypto = require("crypto");
 const express = require("express");
 const bcrypt = require("bcryptjs");
 const db = require("../db");
 
 const router = express.Router();
+const sendEmail = require("../utils/email");
 
 router.get("/login-test", (req, res) => {
   res.send("AUTH ROUTE WORKING");
@@ -40,12 +42,22 @@ router.post("/register", async (req, res) => {
       const insertSql =
         "INSERT INTO users (name, email, phone, password, role) VALUES (?, ?, ?, ?, 'patient')";
 
-        db.query(insertSql, [name, cleanEmail, phone, hashedPassword], (err) => {
+        db.query(insertSql, [name, cleanEmail, phone, hashedPassword], async (err) => {
         if (err) {
           console.error("INSERT ERROR:", err);
           return res.status(500).json({ success: false });
         }
 
+        try {
+          await sendEmail(
+            cleanEmail,
+            "Welcome to MediQ",
+            "Your account has been created successfully. Welcome to MediQ!"
+          );
+        } catch (emailErr) {
+          console.error("EMAIL ERROR:", emailErr);
+        }
+        
         return res.json({ success: true });
       });
     });
@@ -258,6 +270,67 @@ WHERE id = ?`,
       console.log("Logout DB result:", result);
 
       res.json({ success: true });
+    }
+  );
+});
+
+router.post("/forgot-password", (req, res) => {
+  const email = req.body.email?.trim().toLowerCase();
+
+  if (!email) return res.json({ success: false });
+
+  const token = crypto.randomBytes(32).toString("hex");
+  const expires = new Date(Date.now() + 15 * 60 * 1000);
+
+  db.query(
+    "UPDATE users SET reset_token=?, reset_expires=? WHERE email=?",
+    [token, expires, email],
+    async (err, result) => {
+      if (err || result.affectedRows === 0) {
+        return res.json({ success: true });
+      }
+
+      const link = `${process.env.BASE_URL}/api/reset-password?token=${token}`;
+
+      try {
+        await sendEmail(
+          email,
+          "Reset your password",
+          `Click here to reset your password:\n${link}\n\nLink expires in 15 minutes.`
+        );
+      } catch (e) {
+        console.error("RESET EMAIL ERROR:", e);
+      }
+
+      res.json({ success: true });
+    }
+  );
+});
+
+router.post("/reset-password", async (req, res) => {
+  const { token, newPassword } = req.body;
+
+  if (!token || !newPassword) {
+    return res.json({ success: false });
+  }
+
+  db.query(
+    "SELECT * FROM users WHERE reset_token=? AND reset_expires > NOW()",
+    [token],
+    async (err, results) => {
+      if (err || results.length === 0) {
+        return res.json({ success: false, message: "Invalid or expired token" });
+      }
+
+      const hashed = await bcrypt.hash(newPassword, 10);
+
+      db.query(
+        "UPDATE users SET password=?, reset_token=NULL, reset_expires=NULL WHERE id=?",
+        [hashed, results[0].id],
+        () => {
+          res.json({ success: true });
+        }
+      );
     }
   );
 });
