@@ -297,7 +297,7 @@ router.post("/forgot-password", (req, res) => {
         return res.json({ success: true });
       }
 
-      const link = `${process.env.BASE_URL}/api/reset-password?token=${token}`;
+      const link = `mediq://reset-password?token=${token}`;
 
       try {
         await sendEmail(
