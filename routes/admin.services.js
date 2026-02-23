@@ -68,7 +68,10 @@ router.post("/:id/image", upload.single("image"), (req, res) => {
   const { id } = req.params;
 
   if (!req.file) {
-    return res.status(400).json({ success: false, message: "No file uploaded" });
+    return res.status(400).json({
+      success: false,
+      message: "No file uploaded",
+    });
   }
 
   const imagePath = `/uploads/services/${req.file.filename}`;
@@ -82,11 +85,13 @@ router.post("/:id/image", upload.single("image"), (req, res) => {
         return res.status(500).json({ success: false });
       }
 
-      res.json({ success: true, image: imagePath });
+      res.json({
+        success: true,
+        image: imagePath,
+      });
     }
   );
 });
-
 /* TOGGLE SERVICE STATUS */
 router.put("/:id/status", (req, res) => {
   const { id } = req.params;

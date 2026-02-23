@@ -17,17 +17,27 @@ router.get("/", (req, res) => {
 
 router.post("/upload-image/:id", upload.single("image"), (req, res) => {
   const serviceId = req.params.id;
+
+  if (!req.file) {
+    return res.status(400).json({
+      success: false,
+      message: "No file uploaded",
+    });
+  }
+
   const imagePath = `/uploads/services/${req.file.filename}`;
 
   db.query(
     "UPDATE services SET image=? WHERE id=?",
     [imagePath, serviceId],
     (err) => {
-      if (err) return res.status(500).json({ success: false });
+      if (err) {
+        console.error("UPLOAD IMAGE ERROR:", err);
+        return res.status(500).json({ success: false });
+      }
 
       res.json({ success: true, image: imagePath });
     }
   );
 });
-
 module.exports = router;
