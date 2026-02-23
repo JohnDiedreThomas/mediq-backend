@@ -279,7 +279,7 @@ WHERE id = ?`,
 ===================== */
 router.get("/reset-password", (req, res) => {
   const { token } = req.query;
-  res.redirect(`mediq://reset-password?token=${token}`);
+  res.redirect(`mediq://auth/reset-password?token=${token}`);
 });
 router.post("/forgot-password", (req, res) => {
   const email = req.body.email?.trim().toLowerCase();
