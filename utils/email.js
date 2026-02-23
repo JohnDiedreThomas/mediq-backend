@@ -8,20 +8,19 @@ const transporter = nodemailer.createTransport({
   },
 });
 
-const sendEmail = async (to, subject, link) => {
-  await transporter.sendMail({
-    from: `"MediQ Clinic" <${process.env.EMAIL_USER}>`,
-    to,
-    subject,
-    html: `
-      <p>You requested a password reset.</p>
-      <p>Click below:</p>
-      <a href="${link}" style="background:#2F80ED;color:white;padding:10px 20px;border-radius:6px;text-decoration:none;">
-        Reset Password
-      </a>
-      <p>If you didn’t request this, ignore this email.</p>
-    `,
-  });
+const sendEmail = async (to, subject, text) => {
+  try {
+    await transporter.sendMail({
+      from: `"MediQ Clinic" <${process.env.EMAIL_USER}>`,
+      to,
+      subject,
+      text,
+    });
+
+    console.log("✅ Email sent to:", to);
+  } catch (err) {
+    console.error("❌ EMAIL SEND ERROR:", err);
+  }
 };
 
 module.exports = sendEmail;
