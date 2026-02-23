@@ -1,6 +1,7 @@
 process.env.TZ = "Asia/Manila";
 const express = require("express");
 const cors = require("cors");
+const path = require("path");
 
 const authRoutes = require("./routes/auth");          // ✅ CORRECT FILE
 const doctorsRoutes = require("./routes/doctors");
@@ -44,6 +45,7 @@ app.use("/api/notifications", require("./routes/notifications"));
 app.use("/api/arrival", require("./routes/arrival"));
 app.use("/api/reviews", require("./routes/reviews"));
 app.use("/uploads", express.static("uploads"));
+app.use("/uploads", express.static(path.join(__dirname, "uploads")));
 
 const PORT = process.env.PORT || 3000;
 
