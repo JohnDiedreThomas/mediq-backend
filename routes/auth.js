@@ -308,33 +308,32 @@ router.post("/forgot-password", (req, res) => {
 });
 
 router.post("/reset-password", async (req, res) => {
-  const { token, newPassword } = req.body;
+  const { token, password } = req.body;
 
-  if (!token || !newPassword) {
+  if (!token || !password) {
     return res.json({ success: false });
   }
 
-  db.query(
-    "SELECT * FROM users WHERE reset_token=? AND reset_expires > NOW()",
-    [token],
-    async (err, results) => {
-      if (err || results.length === 0) {
-        return res.json({ success: false, message: "Invalid or expired token" });
-      }
+  const sql = `
+    SELECT id FROM users
+    WHERE reset_token = ?
+    AND reset_expires > NOW()
+  `;
 
-      const hashed = await bcrypt.hash(newPassword, 10);
-
-      db.query(
-        "UPDATE users SET password=?, reset_token=NULL, reset_expires=NULL WHERE id=?",
-        [hashed, results[0].id],
-        () => {
-          res.json({ success: true });
-        }
-      );
+  db.query(sql, [token], async (err, rows) => {
+    if (rows.length === 0) {
+      return res.json({ success: false, message: "Invalid token" });
     }
-  );
-});
 
+    const hashed = await bcrypt.hash(password, 10);
+
+    db.query(
+      `UPDATE users SET password = ?, reset_token = NULL, reset_expires = NULL WHERE id = ?`,
+      [hashed, rows[0].id],
+      () => res.json({ success: true })
+    );
+  });
+});
 
 
 module.exports = router;
