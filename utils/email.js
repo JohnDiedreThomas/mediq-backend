@@ -1,22 +1,20 @@
-const nodemailer = require("nodemailer");
+const { Resend } = require("resend");
 
-const transporter = nodemailer.createTransport({
-  host: "smtp.gmail.com",
-  port: 465,
-  secure: true, // ✅ IMPORTANT
-  auth: {
-    user: process.env.EMAIL_USER,
-    pass: process.env.EMAIL_PASS,
-  },
-});
+const resend = new Resend(process.env.RESEND_API_KEY);
 
 const sendEmail = async (to, subject, text) => {
-  await transporter.sendMail({
-    from: `"MediQ Clinic" <${process.env.EMAIL_USER}>`,
-    to,
-    subject,
-    text,
-  });
+  try {
+    await resend.emails.send({
+      from: "MediQ <onboarding@resend.dev>",
+      to,
+      subject,
+      text,
+    });
+
+    console.log("Email sent to:", to);
+  } catch (err) {
+    console.error("EMAIL SEND ERROR:", err);
+  }
 };
 
 module.exports = sendEmail;
