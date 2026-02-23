@@ -278,9 +278,9 @@ WHERE id = ?`,
    RESET LINK CLICK (GET)
 ===================== */
 router.get("/reset-password", (req, res) => {
-  res.send("Reset link works — please return to the app to reset password.");
+  const { token } = req.query;
+  res.redirect(`mediq://reset-password?token=${token}`);
 });
-
 router.post("/forgot-password", (req, res) => {
   const email = req.body.email?.trim().toLowerCase();
 
@@ -297,7 +297,7 @@ router.post("/forgot-password", (req, res) => {
         return res.json({ success: true });
       }
 
-      const link = `mediq://reset-password?token=${token}`;
+      const link = `${process.env.BASE_URL}/api/reset-password?token=${token}`;
 
       try {
         await sendEmail(
