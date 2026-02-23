@@ -274,6 +274,13 @@ WHERE id = ?`,
   );
 });
 
+/* =====================
+   RESET LINK CLICK (GET)
+===================== */
+router.get("/reset-password", (req, res) => {
+  res.send("Reset link works — please return to the app to reset password.");
+});
+
 router.post("/forgot-password", (req, res) => {
   const email = req.body.email?.trim().toLowerCase();
 
@@ -308,6 +315,7 @@ router.post("/forgot-password", (req, res) => {
 });
 
 router.post("/reset-password", async (req, res) => {
+
   const { token, password } = req.body;
 
   if (!token || !password) {
