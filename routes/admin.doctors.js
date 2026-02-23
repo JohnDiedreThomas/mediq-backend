@@ -20,6 +20,7 @@ router.get("/", (req, res) => {
       name,
       specialty,
       description,
+      image,
       is_active
     FROM doctors
     ORDER BY id DESC
@@ -35,6 +36,7 @@ router.get("/", (req, res) => {
         name: d.name,
         specialty: d.specialty,
         description: d.description,
+        image: d.image,
         status: d.is_active === 1 ? "active" : "inactive",
       }));
 
@@ -61,7 +63,7 @@ router.post("/", (req, res) => {
 
   db.query(
     "INSERT INTO doctors (name, specialty, description, is_active) VALUES (?, ?, ?, 1)",
-    [name, specialty],
+    [name, specialty, description || null],
     (err, result) => {
       if (err) {
         console.error("❌ ADD DOCTOR ERROR:", err);
