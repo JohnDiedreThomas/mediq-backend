@@ -2,6 +2,7 @@ const express = require("express");
 const router = express.Router();
 const db = require("../db");
 const adminAuth = require("../middleware/adminAuth");
+const upload = require("../middleware/uploadServiceImage");
 
 /* 🔒 Protect all admin service routes */
 router.use(adminAuth);
@@ -58,6 +59,30 @@ router.put("/:id", (req, res) => {
       }
 
       res.json({ success: true });
+    }
+  );
+});
+
+/* 📸 UPLOAD SERVICE IMAGE */
+router.post("/:id/image", upload.single("image"), (req, res) => {
+  const { id } = req.params;
+
+  if (!req.file) {
+    return res.status(400).json({ success: false, message: "No file uploaded" });
+  }
+
+  const imagePath = `/uploads/services/${req.file.filename}`;
+
+  db.query(
+    "UPDATE services SET image = ? WHERE id = ?",
+    [imagePath, id],
+    (err) => {
+      if (err) {
+        console.error("UPLOAD IMAGE ERROR:", err);
+        return res.status(500).json({ success: false });
+      }
+
+      res.json({ success: true, image: imagePath });
     }
   );
 });
