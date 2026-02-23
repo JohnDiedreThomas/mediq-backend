@@ -22,7 +22,7 @@ const app = express();
 app.use(cors());
 app.use(express.json());
 
-app.use("/uploads", express.static("uploads"));
+app.use("/uploads", express.static(path.join(__dirname, "uploads")));
 
 // 🔐 AUTH ROUTES (LOGIN & REGISTER)
 app.use("/api", authRoutes);
@@ -44,8 +44,6 @@ app.use("/api/contact", require("./routes/contact"));
 app.use("/api/notifications", require("./routes/notifications"));
 app.use("/api/arrival", require("./routes/arrival"));
 app.use("/api/reviews", require("./routes/reviews"));
-app.use("/uploads", express.static("uploads"));
-app.use("/uploads", express.static(path.join(__dirname, "uploads")));
 
 const PORT = process.env.PORT || 3000;
 
