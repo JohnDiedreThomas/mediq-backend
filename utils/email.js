@@ -4,11 +4,15 @@ const resend = new Resend(process.env.RESEND_API_KEY);
 
 const sendEmail = async (to, subject, text) => {
   try {
-    await resend.emails.send({
-      from: "MediQ <onboarding@resend.dev>",
+    await transporter.sendMail({
+      from: `"MediQ Clinic" <${process.env.EMAIL_USER}>`,
       to,
       subject,
       text,
+      html: `
+        <p>Click below to reset your password:</p>
+        <a href="${text}">Reset Password</a>
+      `,
     });
 
     console.log("Email sent to:", to);
