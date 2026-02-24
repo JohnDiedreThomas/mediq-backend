@@ -593,7 +593,8 @@ router.put("/:id/approve", (req, res) => {
       db.query(
         `UPDATE appointments
          SET status = 'approved',
-             reminder_sent = 0
+            rescheduled = 0,
+            reminder_sent = 0
          WHERE id = ? AND status = 'pending'`,
         [id],
         (err, result) => {
