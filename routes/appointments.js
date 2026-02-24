@@ -181,6 +181,14 @@ router.post("/", (req, res) => {
                       if (err) {
                         return res.json({ success: false });
                       }
+                      db.query(
+                        `INSERT INTO staff_notifications (title, message)
+                         VALUES (?, ?)`,
+                        [
+                          "New Appointment 📅",
+                          `New booking: ${patient_name} scheduled on ${date} at ${time}`
+                        ]
+                      );
 
                       res.json({ success: true });
                     });
@@ -329,6 +337,7 @@ router.put("/:id", (req, res) => {
                              patient_name = ?,
                              patient_age = ?,
                              patient_notes = ?,
+                              rescheduled = 1,
                              reminder_sent = 0
                          WHERE id = ?`,
                         [
@@ -351,6 +360,14 @@ router.put("/:id", (req, res) => {
 
                           conn.commit(() => {
                             conn.release();
+                            db.query(
+                               `INSERT INTO staff_notifications (title, message)
+                                VALUES (?, ?)`,
+                               [
+                                "Appointment Rescheduled 🔄",
+                                `Appointment ID ${id} was rescheduled`
+                              ]
+                            )
                             res.json({ success: true });
                           });
                         }
@@ -488,6 +505,14 @@ router.put("/:id/cancel", (req, res) => {
                             if (err) {
                               return res.json({ success: false });
                             }
+                            db.query(
+                              `INSERT INTO staff_notifications (title, message)
+                               VALUES (?, ?)`,
+                               [
+                                "Appointment Cancelled ❌",
+                                `Appointment ID ${id} was cancelled by patient`
+                              ]
+                            );
 
                             res.json({ success: true });
                           });
