@@ -252,12 +252,12 @@ router.put("/:id", (req, res) => {
 
           const oldAppt = rows[0];
 
-          if (oldAppt.status !== "pending") {
+          if (!["pending", "approved"].includes(oldAppt.status)) {
             return conn.rollback(() => {
               conn.release();
               res.json({
                 success: false,
-                message: "Only pending appointments can be edited",
+                message: "Only pending or approved appointments can be rescheduled",
               });
             });
           }
