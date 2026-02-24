@@ -67,26 +67,37 @@ router.put("/:id", (req, res) => {
 
 /* 📸 UPLOAD SERVICE IMAGE — Cloudinary */
 router.post("/:id/image", upload.single("image"), (req, res) => {
+  console.log("📸 SERVICE IMAGE UPLOAD HIT");
+
   const { id } = req.params;
 
+  console.log("Params ID:", id);
+  console.log("File:", req.file);
+
   if (!req.file) {
+    console.log("❌ No file received");
     return res.status(400).json({
       success: false,
       message: "No file uploaded",
     });
   }
 
-  // ⭐ Cloudinary URL
   const imageUrl = req.file.path;
+  console.log("Cloudinary URL:", imageUrl);
 
   db.query(
     "UPDATE services SET image = ? WHERE id = ?",
     [imageUrl, id],
     (err) => {
       if (err) {
-        console.error("UPLOAD IMAGE ERROR:", err);
-        return res.status(500).json({ success: false });
+        console.error("❌ DB UPDATE ERROR:", err);
+        return res.status(500).json({
+          success: false,
+          message: "Database error",
+        });
       }
+
+      console.log("✅ Image saved");
 
       res.json({
         success: true,
