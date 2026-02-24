@@ -3,7 +3,34 @@ const db = require("../db");
 const { sendPushNotification } = require("../pushNotification");
 
 const router = express.Router();
+function convertTo24Hour(timeStr) {
+  if (!timeStr) return "00:00:00";
 
+  timeStr = timeStr.replace(/\s+/gu, " ").trim();
+
+  const match = timeStr.match(/(\d{1,2}):(\d{2})\s*(AM|PM)/i);
+  if (!match) return "00:00:00";
+
+  let [_, h, m, mod] = match;
+
+  h = parseInt(h, 10);
+  if (mod.toUpperCase() === "PM" && h !== 12) h += 12;
+  if (mod.toUpperCase() === "AM" && h === 12) h = 0;
+
+  return `${String(h).padStart(2, "0")}:${m}:00`;
+}
+
+function formatPH(dateStr, timeStr) {
+  const time24 = convertTo24Hour(timeStr);
+
+  const phDate = new Date(`${dateStr}T${time24}+08:00`);
+
+  return phDate.toLocaleString("en-PH", {
+    timeZone: "Asia/Manila",
+    dateStyle: "medium",
+    timeStyle: "short",
+  });
+}
 
 const isHoliday = (date) => {
   const year = date.split("-")[0];
@@ -55,7 +82,7 @@ router.post("/", (req, res) => {
     patient_notes,
   } = req.body;
 
-  const appointmentDateTime = new Date(`${date} ${time}`);
+  const appointmentDateTime = new Date(`${date}T${convertTo24Hour(time)}+08:00`);
   const now = new Date();
 
   if (appointmentDateTime < now) {
@@ -202,7 +229,7 @@ router.post("/", (req, res) => {
                                 await sendPushNotification(
                                   staff.push_token,
                                   "New Appointment 📅",
-                                  `${patient_name} booked for ${date} at ${time}`
+                                  `${patient_name} booked for ${formatPH(date, time)}`
                                 );
                               }
                             }
@@ -218,7 +245,7 @@ router.post("/", (req, res) => {
                             await sendPushNotification(
                               rows[0].push_token,
                               "Appointment Requested 📅",
-                              `Your appointment for ${service} on ${date} at ${time} is pending approval`
+                              `Your appointment for ${service} on ${formatPH(date, time)} is pending approval`
                             );
                           }
                         }
@@ -257,7 +284,7 @@ router.put("/:id", (req, res) => {
     patient_notes,
   } = req.body;
 
-  const appointmentDateTime = new Date(`${date} ${time}`);
+  const appointmentDateTime = new Date(`${date}T${convertTo24Hour(time)}+08:00`);
   if (appointmentDateTime < new Date()) {
     return res.json({ success: false, message: "Cannot reschedule to past time" });
   }
@@ -432,7 +459,7 @@ router.put("/:id", (req, res) => {
                                           await sendPushNotification(
                                             rows[0].push_token,
                                             "Appointment Rescheduled 🔄",
-                                            `Your appointment is now ${date} at ${time}`
+                                            `Your appointment is now ${formatPH(date, time)}`
                                           );
                                         }
                                       }
@@ -756,7 +783,7 @@ router.put("/:id/approve", (req, res) => {
               console.log("⏱ Instant diff:", diffMinutes);
 
               if (diffMinutes >= -10 && diffMinutes <= 60 && appt.push_token) {
-                const message = `Reminder: You have an appointment for ${appt.service} with ${appt.doctor_name} at ${appt.time} today`;
+                const message = `Reminder: You have an appointment for ${appt.service} with ${appt.doctor_name} at ${formatPH(appt.date, appt.time)}`;
 
                 await sendPushNotification(
                   appt.push_token,
@@ -798,7 +825,7 @@ router.put("/:id/complete", (req, res) => {
          SET status = 'completed',
              arrived = 0,
              reminder_sent = 1
-         WHERE id = ? AND status = 'approved'`,
+         WHERE id = ? AND status IN ('approved','arrived')`,
         [id],
         (err, result) => {
           if (err || result.affectedRows === 0) {
@@ -833,15 +860,19 @@ router.put("/:id/complete", (req, res) => {
                     const pushToken = userRows[0].push_token;
 
                     if (pushToken) {
-                      await sendPushNotification(
-                        pushToken,
-                        "Appointment Completed 🏥",
-                        `Your appointment for ${patientName} has been completed.`
-                      );
+                      try {
+                        await sendPushNotification(
+                          pushToken,
+                          "Appointment Completed 🏥",
+                          `Your appointment for ${patientName} has been completed.`
+                        );
+                      } catch (e) {
+                        console.log("Push error:", e);
+                      }
                     }
                   }
 
-                  // ✅ patient notification
+                  // patient notification
                   conn.query(
                     `INSERT INTO notifications (user_id, title, message, is_read)
                      VALUES (?, ?, ?, 0)`,
@@ -852,7 +883,7 @@ router.put("/:id/complete", (req, res) => {
                     ]
                   );
 
-                  // ✅ staff notification
+                  // staff notification
                   conn.query(
                     `INSERT INTO staff_notifications (title, message)
                      VALUES (?, ?)`,
@@ -1002,7 +1033,7 @@ router.put("/:id/status", (req, res) => {
             await sendPushNotification(
               rows[0].push_token,
               "Appointment Status Update",
-              `Your appointment status is now ${status}`
+              `You just ${status} at the clinic`
             );
           }
         }
@@ -1170,7 +1201,7 @@ router.put("/:id/staff-reschedule", (req, res) => {
                                           await sendPushNotification(
                                             rows[0].push_token,
                                             "Appointment Rescheduled 🔄",
-                                            `Clinic moved your appointment to ${date} at ${time}`
+                                            `Clinic moved your appointment to ${formatPH(date, time)}`
                                           );
                                         }
                                       }
