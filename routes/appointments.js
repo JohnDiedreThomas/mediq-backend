@@ -238,7 +238,7 @@ router.put("/:id", (req, res) => {
       }
 
       conn.query(
-        "SELECT doctor, date, time, status, user_id FROM appointments WHERE id = ?",
+        "SELECT doctor, date, time, status FROM appointments WHERE id = ?",
         [id],
         (err, rows) => {
           if (err || rows.length === 0) {
@@ -257,7 +257,6 @@ router.put("/:id", (req, res) => {
             });
           }
 
-          // FREE OLD SLOT
           conn.query(
             `UPDATE doctor_time_slots
              SET booked_slots = booked_slots - 1
@@ -271,7 +270,6 @@ router.put("/:id", (req, res) => {
                 });
               }
 
-              // FREE DAILY COUNTER
               conn.query(
                 `UPDATE doctor_availability
                  SET booked_slots = booked_slots - 1
@@ -285,7 +283,6 @@ router.put("/:id", (req, res) => {
                     });
                   }
 
-                  // LOCK NEW SLOT
                   conn.query(
                     `SELECT id, total_slots, booked_slots
                      FROM doctor_time_slots
@@ -309,7 +306,6 @@ router.put("/:id", (req, res) => {
                         });
                       }
 
-                      // RESERVE NEW SLOT
                       conn.query(
                         `UPDATE doctor_time_slots
                          SET booked_slots = booked_slots + 1
@@ -323,7 +319,6 @@ router.put("/:id", (req, res) => {
                             });
                           }
 
-                          // RESERVE DAILY COUNTER
                           conn.query(
                             `UPDATE doctor_availability
                              SET booked_slots = booked_slots + 1
@@ -337,7 +332,6 @@ router.put("/:id", (req, res) => {
                                 });
                               }
 
-                              // UPDATE APPOINTMENT
                               conn.query(
                                 `UPDATE appointments
                                  SET service=?, doctor=?, date=?, time=?,
@@ -367,42 +361,14 @@ router.put("/:id", (req, res) => {
 
                                     if (err) return res.json({ success: false });
 
-                                    // 🔔 STAFF NOTIF
+                                    // ✅ ONLY STAFF NOTIFICATION
                                     db.query(
                                       `INSERT INTO staff_notifications (title,message)
                                        VALUES (?,?)`,
                                       [
-                                        "Appointment Rescheduled 🔄",
+                                        "Patient Rescheduled 🔄",
                                         `Appointment ID ${id} moved to ${date} ${time}`,
                                       ]
-                                    );
-
-                                    // 🔔 PATIENT NOTIF
-                                    db.query(
-                                      `INSERT INTO notifications (user_id,title,message,is_read)
-                                       VALUES (?,?,?,0)`,
-                                      [
-                                        oldAppt.user_id,
-                                        "Appointment Rescheduled",
-                                        `Your appointment moved to ${date} ${time}`,
-                                      ]
-                                    );
-
-                                    db.query(
-                                      "SELECT push_token FROM users WHERE id=?",
-                                      [oldAppt.user_id],
-                                      async (err, uRows) => {
-                                        if (!err && uRows.length > 0) {
-                                          const token = uRows[0].push_token;
-                                          if (token) {
-                                            await sendPushNotification(
-                                              token,
-                                              "Appointment Rescheduled 🔄",
-                                              `Your appointment moved to ${date} ${time}`
-                                            );
-                                          }
-                                        }
-                                      }
                                     );
 
                                     res.json({ success: true });
@@ -999,7 +965,6 @@ router.put("/:id/staff-reschedule", (req, res) => {
 
           const old = rows[0];
 
-          // FREE OLD SLOT
           conn.query(
             `UPDATE doctor_time_slots
              SET booked_slots = booked_slots - 1
@@ -1026,7 +991,6 @@ router.put("/:id/staff-reschedule", (req, res) => {
                     });
                   }
 
-                  // LOCK NEW SLOT
                   conn.query(
                     `SELECT id,total_slots,booked_slots
                      FROM doctor_time_slots
@@ -1037,7 +1001,7 @@ router.put("/:id/staff-reschedule", (req, res) => {
                       if (err || slotRows.length === 0) {
                         return conn.rollback(() => {
                           conn.release();
-                          res.json({ success: false, message: "Slot not found" });
+                          res.json({ success: false });
                         });
                       }
 
@@ -1050,7 +1014,6 @@ router.put("/:id/staff-reschedule", (req, res) => {
                         });
                       }
 
-                      // RESERVE NEW SLOT
                       conn.query(
                         `UPDATE doctor_time_slots
                          SET booked_slots = booked_slots + 1
@@ -1077,7 +1040,6 @@ router.put("/:id/staff-reschedule", (req, res) => {
                                 });
                               }
 
-                              // UPDATE APPOINTMENT
                               conn.query(
                                 `UPDATE appointments
                                  SET doctor=?, date=?, time=?, rescheduled=1, reminder_sent=0
@@ -1096,23 +1058,24 @@ router.put("/:id/staff-reschedule", (req, res) => {
 
                                     if (err) return res.json({ success: false });
 
-                                    // notifications
+                                    // ✅ STAFF LOG
                                     db.query(
                                       `INSERT INTO staff_notifications (title,message)
                                        VALUES (?,?)`,
                                       [
-                                        "Appointment Rescheduled 🔄",
-                                        `Appointment ${id} moved to ${date} ${time}`
+                                        "Staff Rescheduled 🔄",
+                                        `Appointment ${id} moved to ${date} ${time}`,
                                       ]
                                     );
 
+                                    // ✅ PATIENT NOTIFICATION
                                     db.query(
                                       `INSERT INTO notifications (user_id,title,message,is_read)
                                        VALUES (?,?,?,0)`,
                                       [
                                         old.user_id,
                                         "Appointment Rescheduled",
-                                        `Your appointment was moved to ${date} ${time}`
+                                        `Clinic moved your appointment to ${date} ${time}`,
                                       ]
                                     );
 
