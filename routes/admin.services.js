@@ -66,45 +66,44 @@ router.put("/:id", (req, res) => {
 });
 
 /* 📸 UPLOAD SERVICE IMAGE — Cloudinary */
-router.post("/:id/image", upload.single("image"), (req, res) => {
-  console.log("📸 SERVICE IMAGE UPLOAD HIT");
+router.post("/:id/image", (req, res, next) => {
+  console.log("📸 Upload endpoint hit");
 
-  const { id } = req.params;
+  next();
+}, upload.single("image"), (req, res) => {
+  try {
+    const { id } = req.params;
 
-  console.log("Params ID:", id);
-  console.log("File:", req.file);
+    console.log("File received:", req.file);
 
-  if (!req.file) {
-    console.log("❌ No file received");
-    return res.status(400).json({
-      success: false,
-      message: "No file uploaded",
-    });
-  }
-
-  const imageUrl = req.file.path;
-  console.log("Cloudinary URL:", imageUrl);
-
-  db.query(
-    "UPDATE services SET image = ? WHERE id = ?",
-    [imageUrl, id],
-    (err) => {
-      if (err) {
-        console.error("❌ DB UPDATE ERROR:", err);
-        return res.status(500).json({
-          success: false,
-          message: "Database error",
-        });
-      }
-
-      console.log("✅ Image saved");
-
-      res.json({
-        success: true,
-        image: imageUrl,
+    if (!req.file) {
+      return res.status(400).json({
+        success: false,
+        message: "No file uploaded",
       });
     }
-  );
+
+    const imageUrl = req.file.path;
+
+    db.query(
+      "UPDATE services SET image=? WHERE id=?",
+      [imageUrl, id],
+      (err) => {
+        if (err) {
+          console.error("DB error:", err);
+          return res.status(500).json({ success: false });
+        }
+
+        res.json({
+          success: true,
+          image: imageUrl,
+        });
+      }
+    );
+  } catch (error) {
+    console.error("UPLOAD CRASH:", error);
+    res.status(500).json({ success: false, message: error.message });
+  }
 });
 
 /* TOGGLE SERVICE STATUS */

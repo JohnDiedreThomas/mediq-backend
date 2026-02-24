@@ -54,7 +54,14 @@ app.use("/api/arrival", require("./routes/arrival"));
 app.use("/api/reviews", require("./routes/reviews"));
 
 const PORT = process.env.PORT || 3000;
+app.use((err, req, res, next) => {
+  console.error("🔥 GLOBAL ERROR:", err);
 
+  res.status(500).json({
+    success: false,
+    message: err.message || "Server error",
+  });
+});
 app.listen(PORT, "0.0.0.0", () => {
   console.log("✅ Server running on port", PORT);
 
