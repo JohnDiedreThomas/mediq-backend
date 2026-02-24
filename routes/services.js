@@ -2,7 +2,8 @@ const express = require("express");
 const router = express.Router();
 const db = require("../db");
 
-const upload = require("../middleware/uploadServiceImage");
+// 🔁 CHANGE THIS — Cloudinary uploader
+const upload = require("../middleware/uploadServiceCloudinary");
 
 /* GET ACTIVE SERVICES (PATIENT) */
 router.get("/", (req, res) => {
@@ -15,6 +16,7 @@ router.get("/", (req, res) => {
   );
 });
 
+/* UPLOAD SERVICE IMAGE */
 router.post("/upload-image/:id", upload.single("image"), (req, res) => {
   const serviceId = req.params.id;
 
@@ -25,19 +27,21 @@ router.post("/upload-image/:id", upload.single("image"), (req, res) => {
     });
   }
 
-  const imagePath = `/uploads/services/${req.file.filename}`;
+  // ⭐ Cloudinary URL
+  const imageUrl = req.file.path;
 
   db.query(
     "UPDATE services SET image=? WHERE id=?",
-    [imagePath, serviceId],
+    [imageUrl, serviceId],
     (err) => {
       if (err) {
         console.error("UPLOAD IMAGE ERROR:", err);
         return res.status(500).json({ success: false });
       }
 
-      res.json({ success: true, image: imagePath });
+      res.json({ success: true, image: imageUrl });
     }
   );
 });
+
 module.exports = router;

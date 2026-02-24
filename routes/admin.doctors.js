@@ -2,7 +2,7 @@ const express = require("express");
 const router = express.Router();
 const db = require("../db");
 const adminAuth = require("../middleware/adminAuth");
-const upload = require("../middleware/uploadDoctorImage");
+const upload = require("../middleware/uploadDoctorCloudinary");
 
 router.use(adminAuth);
 
@@ -116,19 +116,18 @@ router.post("/:id/image", upload.single("image"), (req, res) => {
     return res.status(400).json({ success: false });
   }
 
-  const imagePath = `/uploads/doctors/${req.file.filename}`;
+  const imageUrl = req.file.path;
 
   db.query(
     "UPDATE doctors SET image=? WHERE id=?",
-    [imagePath, id],
+    [imageUrl, id],
     (err) => {
       if (err) return res.status(500).json({ success: false });
 
-      res.json({ success: true, image: imagePath });
+      res.json({ success: true, image: imageUrl });
     }
   );
 });
-
 /*
 |--------------------------------------------------
 | DELETE DOCTOR

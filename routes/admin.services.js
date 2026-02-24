@@ -2,7 +2,9 @@ const express = require("express");
 const router = express.Router();
 const db = require("../db");
 const adminAuth = require("../middleware/adminAuth");
-const upload = require("../middleware/uploadServiceImage");
+
+// ⭐ CHANGE uploader
+const upload = require("../middleware/uploadServiceCloudinary");
 
 /* 🔒 Protect all admin service routes */
 router.use(adminAuth);
@@ -63,7 +65,7 @@ router.put("/:id", (req, res) => {
   );
 });
 
-/* 📸 UPLOAD SERVICE IMAGE */
+/* 📸 UPLOAD SERVICE IMAGE — Cloudinary */
 router.post("/:id/image", upload.single("image"), (req, res) => {
   const { id } = req.params;
 
@@ -74,11 +76,12 @@ router.post("/:id/image", upload.single("image"), (req, res) => {
     });
   }
 
-  const imagePath = `/uploads/services/${req.file.filename}`;
+  // ⭐ Cloudinary URL
+  const imageUrl = req.file.path;
 
   db.query(
     "UPDATE services SET image = ? WHERE id = ?",
-    [imagePath, id],
+    [imageUrl, id],
     (err) => {
       if (err) {
         console.error("UPLOAD IMAGE ERROR:", err);
@@ -87,11 +90,12 @@ router.post("/:id/image", upload.single("image"), (req, res) => {
 
       res.json({
         success: true,
-        image: imagePath,
+        image: imageUrl,
       });
     }
   );
 });
+
 /* TOGGLE SERVICE STATUS */
 router.put("/:id/status", (req, res) => {
   const { id } = req.params;
@@ -115,11 +119,10 @@ router.put("/:id/status", (req, res) => {
   );
 });
 
-/* 🔥 SAFE DELETE SERVICE ← STEP 2 GOES HERE */
+/* SAFE DELETE SERVICE */
 router.delete("/:id", (req, res) => {
   const { id } = req.params;
 
-  // 1️⃣ Check if service is used
   db.query(
     "SELECT COUNT(*) AS count FROM appointments WHERE service_id = ?",
     [id],
@@ -137,7 +140,6 @@ router.delete("/:id", (req, res) => {
         });
       }
 
-      // 2️⃣ Safe delete
       db.query(
         "DELETE FROM services WHERE id = ?",
         [id],
