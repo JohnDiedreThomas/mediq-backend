@@ -177,10 +177,12 @@ router.post("/", (req, res) => {
 
                     conn.commit((err) => {
                       conn.release();
-
+                    
                       if (err) {
                         return res.json({ success: false });
                       }
+                    
+                      // ✅ Save staff notification (in app list)
                       db.query(
                         `INSERT INTO staff_notifications (title, message)
                          VALUES (?, ?)`,
@@ -189,7 +191,39 @@ router.post("/", (req, res) => {
                           `New booking: ${patient_name} scheduled on ${date} at ${time}`
                         ]
                       );
-
+                    
+                      // ✅ PUSH to ALL STAFF
+                      db.query(
+                        "SELECT push_token FROM users WHERE role = 'staff'",
+                        async (err, rows) => {
+                          if (!err && rows.length > 0) {
+                            for (const staff of rows) {
+                              if (staff.push_token) {
+                                await sendPushNotification(
+                                  staff.push_token,
+                                  "New Appointment 📅",
+                                  `${patient_name} booked for ${date} at ${time}`
+                                );
+                              }
+                            }
+                          }
+                        }
+                      );
+                      // 🔔 PUSH TO PATIENT
+                      db.query(
+                        "SELECT push_token FROM users WHERE id = ?",
+                        [user_id],
+                        async (err, rows) => {
+                          if (!err && rows.length > 0 && rows[0].push_token) {
+                            await sendPushNotification(
+                              rows[0].push_token,
+                              "Appointment Requested 📅",
+                              `Your appointment for ${service} on ${date} at ${time} is pending approval`
+                            );
+                          }
+                        }
+                      );
+                      
                       res.json({ success: true });
                     });
                   }
@@ -250,10 +284,10 @@ router.put("/:id", (req, res) => {
 
           const oldAppt = rows[0];
 
-          if (!["pending", "approved"].includes(oldAppt.status)) {
+          if (oldAppt.status !== "pending") {
             return conn.rollback(() => {
               conn.release();
-              res.json({ success: false, message: "Cannot reschedule" });
+              res.json({ success: false, message: "Only pending appointments can be rescheduled" });
             });
           }
 
@@ -356,12 +390,12 @@ router.put("/:id", (req, res) => {
                                     });
                                   }
 
-                                  conn.commit(err => {
+                                  conn.commit(async err => {
                                     conn.release();
-
+                                  
                                     if (err) return res.json({ success: false });
-
-                                    // ✅ ONLY STAFF NOTIFICATION
+                                  
+                                    // ✅ Save staff notification
                                     db.query(
                                       `INSERT INTO staff_notifications (title,message)
                                        VALUES (?,?)`,
@@ -370,7 +404,39 @@ router.put("/:id", (req, res) => {
                                         `Appointment ID ${id} moved to ${date} ${time}`,
                                       ]
                                     );
-
+                                  
+                                    // 🔔 PUSH TO STAFF
+                                    db.query(
+                                      "SELECT push_token FROM users WHERE role = 'staff'",
+                                      async (err, staffRows) => {
+                                        if (!err && staffRows.length > 0) {
+                                          for (const staff of staffRows) {
+                                            if (staff.push_token) {
+                                              await sendPushNotification(
+                                                staff.push_token,
+                                                "Patient Rescheduled 🔄",
+                                                `Appointment moved to ${date} at ${time}`
+                                              );
+                                            }
+                                          }
+                                        }
+                                      }
+                                    );
+                                  
+                                    // 🔔 PUSH TO PATIENT
+                                    db.query(
+                                      "SELECT a.user_id, u.push_token FROM appointments a JOIN users u ON u.id=a.user_id WHERE a.id=?",
+                                      [id],
+                                      async (err, rows) => {
+                                        if (!err && rows.length > 0 && rows[0].push_token) {
+                                          await sendPushNotification(
+                                            rows[0].push_token,
+                                            "Appointment Rescheduled 🔄",
+                                            `Your appointment is now ${date} at ${time}`
+                                          );
+                                        }
+                                      }
+                                    );
                                     res.json({ success: true });
                                   });
                                 }
@@ -924,11 +990,28 @@ router.put("/:id/status", (req, res) => {
         return res.json({ success: false });
       }
 
+      // 🔔 PUSH TO PATIENT
+      db.query(
+        `SELECT a.user_id, u.push_token
+         FROM appointments a
+         JOIN users u ON u.id = a.user_id
+         WHERE a.id = ?`,
+        [id],
+        async (err, rows) => {
+          if (!err && rows.length > 0 && rows[0].push_token) {
+            await sendPushNotification(
+              rows[0].push_token,
+              "Appointment Status Update",
+              `Your appointment status is now ${status}`
+            );
+          }
+        }
+      );
+
       res.json({ success: true });
     }
   );
 });
-
 /*
 |--------------------------------------------------
 | STAFF RESCHEDULE APPOINTMENT
@@ -1077,6 +1160,20 @@ router.put("/:id/staff-reschedule", (req, res) => {
                                         "Appointment Rescheduled",
                                         `Clinic moved your appointment to ${date} ${time}`,
                                       ]
+                                    );
+                                    // 🔔 PUSH TO PATIENT
+                                    db.query(
+                                      "SELECT push_token FROM users WHERE id = ?",
+                                      [old.user_id],
+                                      async (err, rows) => {
+                                        if (!err && rows.length > 0 && rows[0].push_token) {
+                                          await sendPushNotification(
+                                            rows[0].push_token,
+                                            "Appointment Rescheduled 🔄",
+                                            `Clinic moved your appointment to ${date} at ${time}`
+                                          );
+                                        }
+                                      }
                                     );
 
                                     res.json({ success: true });
