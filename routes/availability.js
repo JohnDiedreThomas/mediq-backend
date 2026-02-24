@@ -24,7 +24,6 @@ router.get("/:doctorId/availability", (req, res) => {
         SUM(total_slots - booked_slots) AS remaining
       FROM doctor_time_slots
       WHERE doctor_id = ?
-        AND DATE(date) >= CURDATE()
       GROUP BY DATE(date)
     ) x
     ORDER BY d
@@ -50,18 +49,6 @@ router.get("/:doctorId/availability", (req, res) => {
 */
 router.get("/:doctorId/availability/:date", (req, res) => {
   const { doctorId, date } = req.params;
-  const today = new Date();
-  today.setHours(0,0,0,0);
-
-const requestedDate = new Date(date);
-
-if (requestedDate < today) {
-  return res.json({
-    success: false,
-    slots: [],
-  });
-}
-  
 
   const sql = `
     SELECT 
