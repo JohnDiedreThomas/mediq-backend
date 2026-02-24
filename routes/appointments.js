@@ -207,9 +207,9 @@ router.post("/", (req, res) => {
 
 
 /*
-|--------------------------------------------------------------------------
-| EDIT APPOINTMENT (PENDING ONLY)
-|--------------------------------------------------------------------------
+|--------------------------------------------------
+| EDIT / RESCHEDULE APPOINTMENT (SAFE)
+|--------------------------------------------------
 */
 router.put("/:id", (req, res) => {
   const { id } = req.params;
@@ -224,37 +224,27 @@ router.put("/:id", (req, res) => {
   } = req.body;
 
   const appointmentDateTime = new Date(`${date} ${time}`);
-  const now = new Date();
-
-  if (appointmentDateTime < now) {
-    return res.json({
-      success: false,
-      message: "Cannot reschedule to past time",
-    });
-  }
-
-  if (!service || !doctor || !date || !time || !patient_name || !patient_age) {
-    return res.json({ success: false, message: "Missing fields" });
+  if (appointmentDateTime < new Date()) {
+    return res.json({ success: false, message: "Cannot reschedule to past time" });
   }
 
   db.getConnection((err, conn) => {
     if (err) return res.json({ success: false });
 
-    conn.beginTransaction((err) => {
+    conn.beginTransaction(err => {
       if (err) {
         conn.release();
         return res.json({ success: false });
       }
 
-      // 1️⃣ Get old appointment info
       conn.query(
-        "SELECT doctor, date, time, status FROM appointments WHERE id = ?",
+        "SELECT doctor, date, time, status, user_id FROM appointments WHERE id = ?",
         [id],
         (err, rows) => {
           if (err || rows.length === 0) {
             return conn.rollback(() => {
               conn.release();
-              res.json({ success: false, message: "Appointment not found" });
+              res.json({ success: false });
             });
           }
 
@@ -263,23 +253,17 @@ router.put("/:id", (req, res) => {
           if (!["pending", "approved"].includes(oldAppt.status)) {
             return conn.rollback(() => {
               conn.release();
-              res.json({
-                success: false,
-                message: "Only pending or approved appointments can be rescheduled",
-              });
+              res.json({ success: false, message: "Cannot reschedule" });
             });
           }
 
-          // 2️⃣ Restore OLD slot
+          // FREE OLD SLOT
           conn.query(
             `UPDATE doctor_time_slots
              SET booked_slots = booked_slots - 1
-             WHERE doctor_id = ?
-               AND DATE(date) = ?
-               AND time = ?
-               AND booked_slots > 0`,
+             WHERE doctor_id = ? AND DATE(date) = ? AND time = ? AND booked_slots > 0`,
             [oldAppt.doctor, oldAppt.date, oldAppt.time],
-            (err) => {
+            err => {
               if (err) {
                 return conn.rollback(() => {
                   conn.release();
@@ -287,70 +271,51 @@ router.put("/:id", (req, res) => {
                 });
               }
 
-              // 3️⃣ Lock NEW slot
+              // FREE DAILY COUNTER
               conn.query(
-                `SELECT id, total_slots, booked_slots
-                 FROM doctor_time_slots
-                 WHERE doctor_id = ?
-                   AND DATE(date) = ?
-                   AND time = ?
-                 FOR UPDATE`,
-                [doctor, date, time],
-                (err, slotRows) => {
-                  if (err || slotRows.length === 0) {
+                `UPDATE doctor_availability
+                 SET booked_slots = booked_slots - 1
+                 WHERE doctor_id = ? AND DATE(date) = ?`,
+                [oldAppt.doctor, oldAppt.date],
+                err => {
+                  if (err) {
                     return conn.rollback(() => {
                       conn.release();
-                      res.json({ success: false, message: "New slot not found" });
+                      res.json({ success: false });
                     });
                   }
 
-                  const newSlot = slotRows[0];
-
-                  if (newSlot.booked_slots >= newSlot.total_slots) {
-                    return conn.rollback(() => {
-                      conn.release();
-                      res.json({ success: false, message: "New slot is full" });
-                    });
-                  }
-
-                  // 4️⃣ Deduct NEW slot
+                  // LOCK NEW SLOT
                   conn.query(
-                    `UPDATE doctor_time_slots
-                     SET booked_slots = booked_slots + 1
-                     WHERE id = ?`,
-                    [newSlot.id],
-                    (err) => {
-                      if (err) {
+                    `SELECT id, total_slots, booked_slots
+                     FROM doctor_time_slots
+                     WHERE doctor_id = ? AND DATE(date) = ? AND time = ?
+                     FOR UPDATE`,
+                    [doctor, date, time],
+                    (err, slotRows) => {
+                      if (err || slotRows.length === 0) {
                         return conn.rollback(() => {
                           conn.release();
                           res.json({ success: false });
                         });
                       }
 
-                      // 5️⃣ Update appointment
+                      const slot = slotRows[0];
+
+                      if (slot.booked_slots >= slot.total_slots) {
+                        return conn.rollback(() => {
+                          conn.release();
+                          res.json({ success: false, message: "Slot full" });
+                        });
+                      }
+
+                      // RESERVE NEW SLOT
                       conn.query(
-                        `UPDATE appointments
-                         SET service = ?,
-                             doctor = ?,
-                             date = ?,
-                             time = ?,
-                             patient_name = ?,
-                             patient_age = ?,
-                             patient_notes = ?,
-                              rescheduled = 1,
-                             reminder_sent = 0
+                        `UPDATE doctor_time_slots
+                         SET booked_slots = booked_slots + 1
                          WHERE id = ?`,
-                        [
-                          service,
-                          doctor,
-                          date,
-                          time,
-                          patient_name,
-                          patient_age,
-                          patient_notes || null,
-                          id,
-                        ],
-                        (err) => {
+                        [slot.id],
+                        err => {
                           if (err) {
                             return conn.rollback(() => {
                               conn.release();
@@ -358,18 +323,94 @@ router.put("/:id", (req, res) => {
                             });
                           }
 
-                          conn.commit(() => {
-                            conn.release();
-                            db.query(
-                               `INSERT INTO staff_notifications (title, message)
-                                VALUES (?, ?)`,
-                               [
-                                "Appointment Rescheduled 🔄",
-                                `Appointment ID ${id} was rescheduled`
-                              ]
-                            )
-                            res.json({ success: true });
-                          });
+                          // RESERVE DAILY COUNTER
+                          conn.query(
+                            `UPDATE doctor_availability
+                             SET booked_slots = booked_slots + 1
+                             WHERE doctor_id = ? AND DATE(date) = ?`,
+                            [doctor, date],
+                            err => {
+                              if (err) {
+                                return conn.rollback(() => {
+                                  conn.release();
+                                  res.json({ success: false });
+                                });
+                              }
+
+                              // UPDATE APPOINTMENT
+                              conn.query(
+                                `UPDATE appointments
+                                 SET service=?, doctor=?, date=?, time=?,
+                                     patient_name=?, patient_age=?, patient_notes=?,
+                                     rescheduled=1, reminder_sent=0
+                                 WHERE id=?`,
+                                [
+                                  service,
+                                  doctor,
+                                  date,
+                                  time,
+                                  patient_name,
+                                  patient_age,
+                                  patient_notes || null,
+                                  id,
+                                ],
+                                err => {
+                                  if (err) {
+                                    return conn.rollback(() => {
+                                      conn.release();
+                                      res.json({ success: false });
+                                    });
+                                  }
+
+                                  conn.commit(err => {
+                                    conn.release();
+
+                                    if (err) return res.json({ success: false });
+
+                                    // 🔔 STAFF NOTIF
+                                    db.query(
+                                      `INSERT INTO staff_notifications (title,message)
+                                       VALUES (?,?)`,
+                                      [
+                                        "Appointment Rescheduled 🔄",
+                                        `Appointment ID ${id} moved to ${date} ${time}`,
+                                      ]
+                                    );
+
+                                    // 🔔 PATIENT NOTIF
+                                    db.query(
+                                      `INSERT INTO notifications (user_id,title,message,is_read)
+                                       VALUES (?,?,?,0)`,
+                                      [
+                                        oldAppt.user_id,
+                                        "Appointment Rescheduled",
+                                        `Your appointment moved to ${date} ${time}`,
+                                      ]
+                                    );
+
+                                    db.query(
+                                      "SELECT push_token FROM users WHERE id=?",
+                                      [oldAppt.user_id],
+                                      async (err, uRows) => {
+                                        if (!err && uRows.length > 0) {
+                                          const token = uRows[0].push_token;
+                                          if (token) {
+                                            await sendPushNotification(
+                                              token,
+                                              "Appointment Rescheduled 🔄",
+                                              `Your appointment moved to ${date} ${time}`
+                                            );
+                                          }
+                                        }
+                                      }
+                                    );
+
+                                    res.json({ success: true });
+                                  });
+                                }
+                              );
+                            }
+                          );
                         }
                       );
                     }
@@ -383,7 +424,6 @@ router.put("/:id", (req, res) => {
     });
   });
 });
-
 
 /*
 |--------------------------------------------------------------------------
@@ -498,6 +538,15 @@ router.put("/:id/cancel", (req, res) => {
                               );
                             }
                           }
+                          db.query(
+                            `INSERT INTO notifications (user_id, title, message, is_read)
+                             VALUES (?, ?, ?, 0)`,
+                            [
+                              appt.user_id,
+                              "Appointment Cancelled",
+                              "Your appointment has been cancelled, please contact (Contact Us) the clinic for more info"
+                            ]
+                          );
 
                           conn.commit((err) => {
                             conn.release();
@@ -510,7 +559,7 @@ router.put("/:id/cancel", (req, res) => {
                                VALUES (?, ?)`,
                                [
                                 "Appointment Cancelled ❌",
-                                `Appointment ID ${id} was cancelled by patient`
+                                `Appointment ID ${id} was cancelled`
                               ]
                             );
 
@@ -703,57 +752,99 @@ router.put("/:id/approve", (req, res) => {
 router.put("/:id/complete", (req, res) => {
   const { id } = req.params;
 
-  // 1️⃣ Update status
-  db.query(
-    `UPDATE appointments
-     SET status = 'completed',
-     arrived = 0,
-      reminder_sent = 1
-     WHERE id = ? AND status = 'approved'`,
-    [id],
-    (err, result) => {
-      if (err || result.affectedRows === 0) {
-        return res.json({
-          success: false,
-          message: "Cannot complete appointment",
-        });
+  db.getConnection((err, conn) => {
+    if (err) return res.json({ success: false });
+
+    conn.beginTransaction((err) => {
+      if (err) {
+        conn.release();
+        return res.json({ success: false });
       }
 
-      // 2️⃣ Get user_id
-      db.query(
-        "SELECT user_id FROM appointments WHERE id = ?",
+      conn.query(
+        `UPDATE appointments
+         SET status = 'completed',
+             arrived = 0,
+             reminder_sent = 1
+         WHERE id = ? AND status = 'approved'`,
         [id],
-        async (err, rows) => {
-          if (!err && rows.length > 0) {
-            const userId = rows[0].user_id;
-
-            // 3️⃣ Get push token
-            db.query(
-              "SELECT push_token FROM users WHERE id = ?",
-              [userId],
-              async (err, userRows) => {
-                if (!err && userRows.length > 0) {
-                  const pushToken = userRows[0].push_token;
-
-                  if (pushToken) {
-                    await sendPushNotification(
-                      pushToken,
-                      "Appointment Completed 🏥",
-                      "Your appointment has been marked as completed."
-                    );
-                  }
-                }
-
-                res.json({ success: true });
-              }
-            );
-          } else {
-            res.json({ success: true });
+        (err, result) => {
+          if (err || result.affectedRows === 0) {
+            return conn.rollback(() => {
+              conn.release();
+              res.json({
+                success: false,
+                message: "Cannot complete appointment",
+              });
+            });
           }
+
+          conn.query(
+            `SELECT user_id, patient_name FROM appointments WHERE id = ?`,
+            [id],
+            (err, rows) => {
+              if (err || rows.length === 0) {
+                return conn.rollback(() => {
+                  conn.release();
+                  res.json({ success: false });
+                });
+              }
+
+              const userId = rows[0].user_id;
+              const patientName = rows[0].patient_name;
+
+              conn.query(
+                "SELECT push_token FROM users WHERE id = ?",
+                [userId],
+                async (err, userRows) => {
+                  if (!err && userRows.length > 0) {
+                    const pushToken = userRows[0].push_token;
+
+                    if (pushToken) {
+                      await sendPushNotification(
+                        pushToken,
+                        "Appointment Completed 🏥",
+                        `Your appointment for ${patientName} has been completed.`
+                      );
+                    }
+                  }
+
+                  // ✅ patient notification
+                  conn.query(
+                    `INSERT INTO notifications (user_id, title, message, is_read)
+                     VALUES (?, ?, ?, 0)`,
+                    [
+                      userId,
+                      "Appointment Completed",
+                      "Your appointment has been completed. Thank you!",
+                    ]
+                  );
+
+                  // ✅ staff notification
+                  conn.query(
+                    `INSERT INTO staff_notifications (title, message)
+                     VALUES (?, ?)`,
+                    [
+                      "Appointment Completed 🏥",
+                      `Appointment ID ${id} marked as completed`,
+                    ]
+                  );
+
+                  conn.commit((err) => {
+                    conn.release();
+
+                    if (err) return res.json({ success: false });
+
+                    res.json({ success: true });
+                  });
+                }
+              );
+            }
+          );
         }
       );
-    }
-  );
+    });
+  });
 });
 
 /*
@@ -872,5 +963,176 @@ router.put("/:id/status", (req, res) => {
   );
 });
 
+/*
+|--------------------------------------------------
+| STAFF RESCHEDULE APPOINTMENT
+|--------------------------------------------------
+*/
 
+router.put("/:id/staff-reschedule", (req, res) => {
+  const { id } = req.params;
+  const { doctor, date, time } = req.body;
+
+  if (!doctor || !date || !time) {
+    return res.json({ success: false, message: "Missing fields" });
+  }
+
+  db.getConnection((err, conn) => {
+    if (err) return res.json({ success: false });
+
+    conn.beginTransaction(err => {
+      if (err) {
+        conn.release();
+        return res.json({ success: false });
+      }
+
+      conn.query(
+        "SELECT doctor, date, time, user_id FROM appointments WHERE id = ?",
+        [id],
+        (err, rows) => {
+          if (err || rows.length === 0) {
+            return conn.rollback(() => {
+              conn.release();
+              res.json({ success: false });
+            });
+          }
+
+          const old = rows[0];
+
+          // FREE OLD SLOT
+          conn.query(
+            `UPDATE doctor_time_slots
+             SET booked_slots = booked_slots - 1
+             WHERE doctor_id=? AND DATE(date)=? AND time=? AND booked_slots>0`,
+            [old.doctor, old.date, old.time],
+            err => {
+              if (err) {
+                return conn.rollback(() => {
+                  conn.release();
+                  res.json({ success: false });
+                });
+              }
+
+              conn.query(
+                `UPDATE doctor_availability
+                 SET booked_slots = booked_slots - 1
+                 WHERE doctor_id=? AND DATE(date)=?`,
+                [old.doctor, old.date],
+                err => {
+                  if (err) {
+                    return conn.rollback(() => {
+                      conn.release();
+                      res.json({ success: false });
+                    });
+                  }
+
+                  // LOCK NEW SLOT
+                  conn.query(
+                    `SELECT id,total_slots,booked_slots
+                     FROM doctor_time_slots
+                     WHERE doctor_id=? AND DATE(date)=? AND time=?
+                     FOR UPDATE`,
+                    [doctor, date, time],
+                    (err, slotRows) => {
+                      if (err || slotRows.length === 0) {
+                        return conn.rollback(() => {
+                          conn.release();
+                          res.json({ success: false, message: "Slot not found" });
+                        });
+                      }
+
+                      const slot = slotRows[0];
+
+                      if (slot.booked_slots >= slot.total_slots) {
+                        return conn.rollback(() => {
+                          conn.release();
+                          res.json({ success: false, message: "Slot full" });
+                        });
+                      }
+
+                      // RESERVE NEW SLOT
+                      conn.query(
+                        `UPDATE doctor_time_slots
+                         SET booked_slots = booked_slots + 1
+                         WHERE id=?`,
+                        [slot.id],
+                        err => {
+                          if (err) {
+                            return conn.rollback(() => {
+                              conn.release();
+                              res.json({ success: false });
+                            });
+                          }
+
+                          conn.query(
+                            `UPDATE doctor_availability
+                             SET booked_slots = booked_slots + 1
+                             WHERE doctor_id=? AND DATE(date)=?`,
+                            [doctor, date],
+                            err => {
+                              if (err) {
+                                return conn.rollback(() => {
+                                  conn.release();
+                                  res.json({ success: false });
+                                });
+                              }
+
+                              // UPDATE APPOINTMENT
+                              conn.query(
+                                `UPDATE appointments
+                                 SET doctor=?, date=?, time=?, rescheduled=1, reminder_sent=0
+                                 WHERE id=?`,
+                                [doctor, date, time, id],
+                                err => {
+                                  if (err) {
+                                    return conn.rollback(() => {
+                                      conn.release();
+                                      res.json({ success: false });
+                                    });
+                                  }
+
+                                  conn.commit(err => {
+                                    conn.release();
+
+                                    if (err) return res.json({ success: false });
+
+                                    // notifications
+                                    db.query(
+                                      `INSERT INTO staff_notifications (title,message)
+                                       VALUES (?,?)`,
+                                      [
+                                        "Appointment Rescheduled 🔄",
+                                        `Appointment ${id} moved to ${date} ${time}`
+                                      ]
+                                    );
+
+                                    db.query(
+                                      `INSERT INTO notifications (user_id,title,message,is_read)
+                                       VALUES (?,?,?,0)`,
+                                      [
+                                        old.user_id,
+                                        "Appointment Rescheduled",
+                                        `Your appointment was moved to ${date} ${time}`
+                                      ]
+                                    );
+
+                                    res.json({ success: true });
+                                  });
+                                }
+                              );
+                            }
+                          );
+                        }
+                      );
+                    }
+                  );
+                }
+              );
+            }
+          );
+        }
+      );
+    });
+  });
+});
 module.exports = router;
