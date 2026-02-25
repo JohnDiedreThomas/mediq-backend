@@ -4,6 +4,8 @@ require("dotenv").config();
 const express = require("express");
 const cors = require("cors");
 const path = require("path");
+const http = require("http");
+const { Server } = require("socket.io");
 
 const authRoutes = require("./routes/auth");
 const doctorsRoutes = require("./routes/doctors");
@@ -25,7 +27,12 @@ const app = express();
 app.use(cors());
 app.use(express.json());
 
-// ✅ Serve uploaded files (keep for now — safe even if you move to Cloudinary)
+// ✅ Health endpoint (NEW — useful for uptime monitoring)
+app.get("/health", (req, res) => {
+  res.json({ status: "ok" });
+});
+
+// ✅ Serve uploaded files
 app.use("/uploads", express.static(path.join(__dirname, "uploads")));
 
 // 🔐 AUTH
@@ -54,18 +61,42 @@ app.use("/api/arrival", require("./routes/arrival"));
 app.use("/api/reviews", require("./routes/reviews"));
 
 const PORT = process.env.PORT || 3000;
+
+// 🔥 Global error handler
 app.use((err, req, res, next) => {
   console.error("🔥 GLOBAL ERROR:", err);
-
   res.status(500).json({
     success: false,
     message: err.message || "Server error",
   });
 });
-app.listen(PORT, "0.0.0.0", () => {
-  console.log("✅ Server running on port", PORT);
 
-  // Start background workers
+const server = http.createServer(app);
+
+const io = new Server(server, {
+  cors: {
+    origin: "*",
+  },
+  pingInterval: 25000,
+  pingTimeout: 60000,
+});
+
+// ⭐ Socket connection logs
+io.on("connection", (socket) => {
+  console.log("🟢 Client connected:", socket.id);
+
+  socket.on("disconnect", () => {
+    console.log("🔴 Client disconnected:", socket.id);
+  });
+});
+
+// make io accessible in routes
+app.set("io", io);
+
+server.listen(PORT, "0.0.0.0", () => {
+  console.log(`🚀 Server running on port ${PORT}`);
+  console.log("🧠 Realtime sockets enabled");
+
   startReminderWorker();
 
   runDailyCleanup();
