@@ -43,22 +43,32 @@ router.put("/read/:userId", (req, res) => {
 });
 
 /* GET notifications */
+/* GET notifications (PH timezone fix) */
 router.get("/:userId", (req, res) => {
   const { userId } = req.params;
 
   const sql = `
-    SELECT * FROM notifications
+    SELECT
+      id,
+      user_id,
+      title,
+      message,
+      is_read,
+      CONVERT_TZ(created_at, '+00:00', '+08:00') AS created_at
+    FROM notifications
     WHERE user_id = ?
     ORDER BY created_at DESC
   `;
 
   db.query(sql, [userId], (err, rows) => {
-    if (err) return res.json({ success: false });
+    if (err) {
+      console.error("NOTIF FETCH ERROR:", err);
+      return res.json({ success: false });
+    }
 
-    // send raw timestamps — let frontend handle formatting
     res.json({ success: true, notifications: rows });
   });
-});;
+});
 
 /* DELETE notification */
 router.delete("/:id", (req, res) => {
