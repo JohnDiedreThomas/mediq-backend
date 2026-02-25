@@ -42,19 +42,11 @@ router.put("/read/:userId", (req, res) => {
   });
 });
 
-/* GET notifications */
-/* GET notifications (PH timezone fix) */
 router.get("/:userId", (req, res) => {
   const { userId } = req.params;
 
   const sql = `
-    SELECT
-      id,
-      user_id,
-      title,
-      message,
-      is_read,
-      CONVERT_TZ(created_at, '+00:00', '+08:00') AS created_at
+    SELECT id, user_id, title, message, is_read, created_at
     FROM notifications
     WHERE user_id = ?
     ORDER BY created_at DESC
@@ -69,7 +61,6 @@ router.get("/:userId", (req, res) => {
     res.json({ success: true, notifications: rows });
   });
 });
-
 /* DELETE notification */
 router.delete("/:id", (req, res) => {
   db.query(
