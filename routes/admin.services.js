@@ -85,12 +85,19 @@ router.put("/:id", (req, res) => {
   db.query(
     "UPDATE services SET name=?, description=?, price=? WHERE id=?",
     [name, description, parsedPrice, id],
-    (err) => {
+    (err, result) => {
       if (err) {
         console.error("UPDATE SERVICE ERROR:", err);
         return res.json({ success: false });
       }
-
+  
+      if (result.affectedRows === 0) {
+        return res.json({
+          success: false,
+          message: "No service updated — wrong ID",
+        });
+      }
+  
       res.json({ success: true });
     }
   );
