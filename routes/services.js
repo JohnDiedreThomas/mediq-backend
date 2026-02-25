@@ -10,7 +10,7 @@ const upload = require("../middleware/uploadServiceCloudinary");
 ================================ */
 router.get("/", (req, res) => {
   db.query(
-    "SELECT id, name, description, category, image FROM services WHERE status='active'",
+    "SELECT id, name, description, category, image, price FROM services WHERE status='active'",
     (err, rows) => {
       if (err) {
         console.error("GET SERVICES ERROR:", err);

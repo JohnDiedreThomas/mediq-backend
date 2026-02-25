@@ -26,15 +26,15 @@ router.get("/", (req, res) => {
 
 /* ADD SERVICE */
 router.post("/", (req, res) => {
-  const { name, description } = req.body;
+  const { name, description, price } = req.body;
 
   if (!name) {
     return res.json({ success: false, message: "Name required" });
   }
 
   db.query(
-    "INSERT INTO services (name, description) VALUES (?, ?)",
-    [name, description || null],
+   "INSERT INTO services (name, description, price) VALUES (?, ?, ?)",
+   [name, description || null, price || 0],
     (err) => {
       if (err) {
         console.error("ADD SERVICE ERROR:", err);
@@ -49,11 +49,11 @@ router.post("/", (req, res) => {
 /* UPDATE SERVICE */
 router.put("/:id", (req, res) => {
   const { id } = req.params;
-  const { name, description } = req.body;
+  const { name, description, price } = req.body;
 
   db.query(
-    "UPDATE services SET name = ?, description = ? WHERE id = ?",
-    [name, description, id],
+    "UPDATE services SET name = ?, description = ?, price = ? WHERE id = ?",
+    [name, description, price || 0, id],
     (err) => {
       if (err) {
         console.error("UPDATE SERVICE ERROR:", err);
