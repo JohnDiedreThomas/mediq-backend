@@ -43,11 +43,6 @@ if (price !== null && price !== undefined && price !== "") {
     return res.json({ success: false, message: "Invalid price" });
   }
 }
-
-  if (isNaN(parsedPrice) || parsedPrice < 0) {
-    return res.json({ success: false, message: "Invalid price" });
-  }
-
   db.query(
     "INSERT INTO services (name, description, price, status) VALUES (?, ?, ?, 'active')",
     [name, description, parsedPrice],
@@ -63,7 +58,10 @@ if (price !== null && price !== undefined && price !== "") {
 });
 
 /* UPDATE SERVICE */
-router.post("/", (req, res) => {
+router.put("/:id", (req, res) => {
+  console.log("UPDATE BODY:", req.body);
+
+  const { id } = req.params;
   let { name, description, price } = req.body;
 
   if (!name || !name.trim()) {
@@ -73,6 +71,7 @@ router.post("/", (req, res) => {
   name = name.trim();
   description = description?.trim() || null;
 
+  // ✅ allow null price
   let parsedPrice = null;
 
   if (price !== null && price !== undefined && price !== "") {
@@ -84,11 +83,11 @@ router.post("/", (req, res) => {
   }
 
   db.query(
-    "INSERT INTO services (name, description, price, status) VALUES (?, ?, ?, 'active')",
-    [name, description, parsedPrice],
+    "UPDATE services SET name=?, description=?, price=? WHERE id=?",
+    [name, description, parsedPrice, id],
     (err) => {
       if (err) {
-        console.error("ADD SERVICE ERROR:", err);
+        console.error("UPDATE SERVICE ERROR:", err);
         return res.json({ success: false });
       }
 
@@ -96,7 +95,6 @@ router.post("/", (req, res) => {
     }
   );
 });
-
 /* 📸 UPLOAD SERVICE IMAGE */
 router.post("/:id/image", upload.single("image"), (req, res) => {
   try {
