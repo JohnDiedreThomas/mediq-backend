@@ -3,7 +3,6 @@ const router = express.Router();
 const db = require("../db");
 const adminAuth = require("../middleware/adminAuth");
 
-// ⭐ CHANGE uploader
 const upload = require("../middleware/uploadServiceCloudinary");
 
 /* 🔒 Protect all admin service routes */
@@ -26,15 +25,24 @@ router.get("/", (req, res) => {
 
 /* ADD SERVICE */
 router.post("/", (req, res) => {
-  const { name, description, price } = req.body;
+  let { name, description, price } = req.body;
 
-  if (!name) {
+  if (!name || !name.trim()) {
     return res.json({ success: false, message: "Name required" });
   }
 
+  name = name.trim();
+  description = description?.trim() || null;
+
+  const parsedPrice = parseFloat(price);
+
+  if (isNaN(parsedPrice) || parsedPrice < 0) {
+    return res.json({ success: false, message: "Invalid price" });
+  }
+
   db.query(
-   "INSERT INTO services (name, description, price) VALUES (?, ?, ?)",
-   [name, description || null, price || 0],
+    "INSERT INTO services (name, description, price, status) VALUES (?, ?, ?, 'active')",
+    [name, description, parsedPrice],
     (err) => {
       if (err) {
         console.error("ADD SERVICE ERROR:", err);
@@ -49,11 +57,24 @@ router.post("/", (req, res) => {
 /* UPDATE SERVICE */
 router.put("/:id", (req, res) => {
   const { id } = req.params;
-  const { name, description, price } = req.body;
+  let { name, description, price } = req.body;
+
+  if (!name || !name.trim()) {
+    return res.json({ success: false, message: "Name required" });
+  }
+
+  name = name.trim();
+  description = description?.trim() || null;
+
+  const parsedPrice = parseFloat(price);
+
+  if (isNaN(parsedPrice) || parsedPrice < 0) {
+    return res.json({ success: false, message: "Invalid price" });
+  }
 
   db.query(
-    "UPDATE services SET name = ?, description = ?, price = ? WHERE id = ?",
-    [name, description, price || 0, id],
+    "UPDATE services SET name=?, description=?, price=? WHERE id=?",
+    [name, description, parsedPrice, id],
     (err) => {
       if (err) {
         console.error("UPDATE SERVICE ERROR:", err);
@@ -65,16 +86,10 @@ router.put("/:id", (req, res) => {
   );
 });
 
-/* 📸 UPLOAD SERVICE IMAGE — Cloudinary */
-router.post("/:id/image", (req, res, next) => {
-  console.log("📸 Upload endpoint hit");
-
-  next();
-}, upload.single("image"), (req, res) => {
+/* 📸 UPLOAD SERVICE IMAGE */
+router.post("/:id/image", upload.single("image"), (req, res) => {
   try {
     const { id } = req.params;
-
-    console.log("File received:", req.file);
 
     if (!req.file) {
       return res.status(400).json({
@@ -94,10 +109,7 @@ router.post("/:id/image", (req, res, next) => {
           return res.status(500).json({ success: false });
         }
 
-        res.json({
-          success: true,
-          image: imageUrl,
-        });
+        res.json({ success: true, image: imageUrl });
       }
     );
   } catch (error) {
@@ -106,7 +118,7 @@ router.post("/:id/image", (req, res, next) => {
   }
 });
 
-/* TOGGLE SERVICE STATUS */
+/* TOGGLE STATUS */
 router.put("/:id/status", (req, res) => {
   const { id } = req.params;
   const { status } = req.body;
@@ -116,7 +128,7 @@ router.put("/:id/status", (req, res) => {
   }
 
   db.query(
-    "UPDATE services SET status = ? WHERE id = ?",
+    "UPDATE services SET status=? WHERE id=?",
     [status, id],
     (err) => {
       if (err) {
@@ -129,12 +141,12 @@ router.put("/:id/status", (req, res) => {
   );
 });
 
-/* SAFE DELETE SERVICE */
+/* SAFE DELETE */
 router.delete("/:id", (req, res) => {
   const { id } = req.params;
 
   db.query(
-    "SELECT COUNT(*) AS count FROM appointments WHERE service_id = ?",
+    "SELECT COUNT(*) AS count FROM appointments WHERE service_id=?",
     [id],
     (err, rows) => {
       if (err) {
@@ -150,25 +162,14 @@ router.delete("/:id", (req, res) => {
         });
       }
 
-      db.query(
-        "DELETE FROM services WHERE id = ?",
-        [id],
-        (err, result) => {
-          if (err) {
-            console.error("DELETE SERVICE ERROR:", err);
-            return res.status(500).json({ success: false });
-          }
-
-          if (result.affectedRows === 0) {
-            return res.status(404).json({
-              success: false,
-              message: "Service not found",
-            });
-          }
-
-          res.json({ success: true });
+      db.query("DELETE FROM services WHERE id=?", [id], (err, result) => {
+        if (err) {
+          console.error("DELETE SERVICE ERROR:", err);
+          return res.status(500).json({ success: false });
         }
-      );
+
+        res.json({ success: true });
+      });
     }
   );
 });
