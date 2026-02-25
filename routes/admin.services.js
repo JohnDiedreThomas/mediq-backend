@@ -56,6 +56,7 @@ router.post("/", (req, res) => {
 
 /* UPDATE SERVICE */
 router.put("/:id", (req, res) => {
+  console.log("UPDATE BODY:", req.body);
   const { id } = req.params;
   let { name, description, price } = req.body;
 
