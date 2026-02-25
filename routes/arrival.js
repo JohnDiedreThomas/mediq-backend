@@ -42,7 +42,8 @@ router.post("/", (req, res) => {
   db.query(
     `SELECT status FROM appointments
      WHERE user_id = ?
-     AND DATE(date) = CURDATE()
+     AND status IN ('approved','arrived')
+     AND DATE(date) = DATE(CONVERT_TZ(NOW(), '+00:00', '+08:00'))
      LIMIT 1`,
     [userId],
     (err, rows) => {
@@ -76,7 +77,8 @@ router.post("/", (req, res) => {
             latitude,
             longitude
           );
-
+          console.log("📍 Distance:", dClinic);
+          console.log("📍 Today PH:", new Date().toLocaleString());
           console.log(`[GPS] User ${userId} distance ${dClinic.toFixed(2)}m`);
 
           if (dClinic <= CLINIC.radius + BUFFER) {
@@ -88,7 +90,7 @@ router.post("/", (req, res) => {
                    arrival_stage = 'nearby'
                WHERE user_id = ?
                AND status IN ('approved','arrived')
-               AND DATE(date) = CURDATE()
+               AND DATE(date) = DATE(CONVERT_TZ(NOW(), '+00:00', '+08:00'))
                AND arrived = 0`,
               [userId],
               (err, result) => {
@@ -145,7 +147,7 @@ router.post("/", (req, res) => {
                SET arrived = 0
                WHERE user_id = ?
                AND status IN ('approved','arrived')
-               AND DATE(date) = CURDATE()`,
+               AND DATE(date) = DATE(CONVERT_TZ(NOW(), '+00:00', '+08:00'))`,
               [userId]
             );
 
@@ -179,7 +181,7 @@ router.get("/nearby", (req, res) => {
     UPDATE appointments
     SET arrived = 0,
         status = 'expired'
-    WHERE DATE(date) < CURDATE()
+    WHERE DATE(date) < DATE(CONVERT_TZ(NOW(), '+00:00', '+08:00'))
     AND status = 'approved'
   `);
 
@@ -197,7 +199,7 @@ router.get("/nearby", (req, res) => {
     JOIN appointments a ON a.user_id = u.id
     WHERE a.arrived = 1
     AND a.status IN ('approved','arrived')
-    AND DATE(a.date) = CURDATE()
+    AND DATE(a.date) = DATE(CONVERT_TZ(NOW(), '+00:00', '+08:00'))
     AND u.latitude IS NOT NULL
     AND u.longitude IS NOT NULL
     AND u.last_location_update > NOW() - INTERVAL 2 MINUTE
