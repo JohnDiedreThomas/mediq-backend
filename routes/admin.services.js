@@ -34,7 +34,15 @@ router.post("/", (req, res) => {
   name = name.trim();
   description = description?.trim() || null;
 
-  const parsedPrice = parseFloat(price);
+  let parsedPrice = null;
+
+if (price !== null && price !== undefined && price !== "") {
+  parsedPrice = parseFloat(price);
+
+  if (isNaN(parsedPrice) || parsedPrice < 0) {
+    return res.json({ success: false, message: "Invalid price" });
+  }
+}
 
   if (isNaN(parsedPrice) || parsedPrice < 0) {
     return res.json({ success: false, message: "Invalid price" });
@@ -57,6 +65,7 @@ router.post("/", (req, res) => {
 /* UPDATE SERVICE */
 router.put("/:id", (req, res) => {
   console.log("UPDATE BODY:", req.body);
+
   const { id } = req.params;
   let { name, description, price } = req.body;
 
@@ -67,10 +76,15 @@ router.put("/:id", (req, res) => {
   name = name.trim();
   description = description?.trim() || null;
 
-  const parsedPrice = parseFloat(price);
+  // ✅ allow null price
+  let parsedPrice = null;
 
-  if (isNaN(parsedPrice) || parsedPrice < 0) {
-    return res.json({ success: false, message: "Invalid price" });
+  if (price !== null && price !== undefined && price !== "") {
+    parsedPrice = parseFloat(price);
+
+    if (isNaN(parsedPrice) || parsedPrice < 0) {
+      return res.json({ success: false, message: "Invalid price" });
+    }
   }
 
   db.query(
@@ -86,7 +100,6 @@ router.put("/:id", (req, res) => {
     }
   );
 });
-
 /* 📸 UPLOAD SERVICE IMAGE */
 router.post("/:id/image", upload.single("image"), (req, res) => {
   try {
