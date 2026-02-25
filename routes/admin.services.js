@@ -63,10 +63,7 @@ if (price !== null && price !== undefined && price !== "") {
 });
 
 /* UPDATE SERVICE */
-router.put("/:id", (req, res) => {
-  console.log("UPDATE BODY:", req.body);
-
-  const { id } = req.params;
+router.post("/", (req, res) => {
   let { name, description, price } = req.body;
 
   if (!name || !name.trim()) {
@@ -76,7 +73,6 @@ router.put("/:id", (req, res) => {
   name = name.trim();
   description = description?.trim() || null;
 
-  // ✅ allow null price
   let parsedPrice = null;
 
   if (price !== null && price !== undefined && price !== "") {
@@ -88,11 +84,11 @@ router.put("/:id", (req, res) => {
   }
 
   db.query(
-    "UPDATE services SET name=?, description=?, price=? WHERE id=?",
-    [name, description, parsedPrice, id],
+    "INSERT INTO services (name, description, price, status) VALUES (?, ?, ?, 'active')",
+    [name, description, parsedPrice],
     (err) => {
       if (err) {
-        console.error("UPDATE SERVICE ERROR:", err);
+        console.error("ADD SERVICE ERROR:", err);
         return res.json({ success: false });
       }
 
@@ -100,6 +96,7 @@ router.put("/:id", (req, res) => {
     }
   );
 });
+
 /* 📸 UPLOAD SERVICE IMAGE */
 router.post("/:id/image", upload.single("image"), (req, res) => {
   try {
