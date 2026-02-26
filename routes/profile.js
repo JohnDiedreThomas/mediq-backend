@@ -7,7 +7,8 @@ const router = express.Router();
 
 const upload = multer({ dest: "uploads/" });
 
-router.post("/profile/image", upload.single("image"), async (req, res) => {
+router.post("/image", upload.single("image"), async (req, res) => {
+    console.log("📸 PROFILE IMAGE UPLOAD HIT");
   try {
     const userId = req.headers["x-user-id"];
 
