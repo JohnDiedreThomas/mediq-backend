@@ -21,6 +21,7 @@ const adminDoctorsRoutes = require("./routes/admin.doctors");
 
 const startReminderWorker = require("./reminderWorker");
 const runDailyCleanup = require("./utils/cleanupScheduler");
+const profileRoutes = require("./routes/profile");
 
 const app = express();
 
@@ -59,6 +60,7 @@ app.use("/api/contact", require("./routes/contact"));
 app.use("/api/notifications", require("./routes/notifications"));
 app.use("/api/arrival", require("./routes/arrival"));
 app.use("/api/reviews", require("./routes/reviews"));
+app.use("/api", profileRoutes);
 
 const PORT = process.env.PORT || 3000;
 
