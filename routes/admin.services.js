@@ -62,7 +62,7 @@ router.put("/:id", (req, res) => {
   console.log("UPDATE BODY:", req.body);
 
   const { id } = req.params;
-  let { name, description, price } = req.body;
+  let { name, description, price, status } = req.body;
 
   if (!name || !name.trim()) {
     return res.json({ success: false, message: "Name required" });
@@ -83,8 +83,8 @@ router.put("/:id", (req, res) => {
   }
 
   db.query(
-    "UPDATE services SET name=?, description=?, price=? WHERE id=?",
-    [name, description, parsedPrice, id],
+    "UPDATE services SET name=?, description=?, price=?, status=? WHERE id=?",
+    [name, description, parsedPrice, status || "active", id],
     (err, result) => {
       if (err) {
         console.error("UPDATE SERVICE ERROR:", err);
