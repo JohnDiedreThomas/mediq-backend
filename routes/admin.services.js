@@ -85,7 +85,7 @@ router.put("/:id", (req, res) => {
   console.log("Parsed price:", parsedPrice);
 
   db.query(
-    "UPDATE services SET name=?, description=?, price = IFNULL(?, price), status=? WHERE id=?",
+    "UPDATE services SET name=?, description=?, price=?, status=? WHERE id=?",
     [name, description, parsedPrice, status || "active", id],
     (err, result) => {
       if (err) {
