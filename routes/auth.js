@@ -127,10 +127,10 @@ router.get("/me/:id", (req, res) => {
   const { id } = req.params;
 
   const sql = `
-    SELECT id, name, email, phone, role
-    FROM users
-    WHERE id = ?
-  `;
+  SELECT id, name, email, phone, role, image
+  FROM users
+  WHERE id = ?
+`;
 
   db.query(sql, [id], (err, rows) => {
     if (err || rows.length === 0) {
