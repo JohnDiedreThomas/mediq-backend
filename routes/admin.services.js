@@ -59,6 +59,7 @@ router.post("/", (req, res) => {
 
 /* UPDATE SERVICE */
 router.put("/:id", (req, res) => {
+  console.log("🔥 UPDATE ROUTE HIT");
   console.log("UPDATE BODY:", req.body);
 
   const { id } = req.params;
