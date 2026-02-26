@@ -4,8 +4,8 @@ const db = require("../db");
 const { sendPushNotification } = require("../pushNotification");
 
 const CLINIC = {
-  latitude: 13.236947,
-  longitude: 123.775801,
+  latitude: 13.145728,
+  longitude: 123.724707,
   radius: 50,
 };
 
