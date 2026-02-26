@@ -34,15 +34,15 @@ router.post("/", (req, res) => {
   name = name.trim();
   description = description?.trim() || null;
 
-  let parsedPrice = null;
+  let parsedPrice;
 
-if (price !== null && price !== undefined && price !== "") {
-  parsedPrice = parseFloat(price);
-
-  if (isNaN(parsedPrice) || parsedPrice < 0) {
-    return res.json({ success: false, message: "Invalid price" });
+  if (price !== null && price !== undefined && price !== "") {
+    parsedPrice = parseFloat(price);
+  
+    if (isNaN(parsedPrice) || parsedPrice < 0) {
+      return res.json({ success: false, message: "Invalid price" });
+    }
   }
-}
   db.query(
     "INSERT INTO services (name, description, price, status) VALUES (?, ?, ?, 'active')",
     [name, description, parsedPrice],
@@ -72,18 +72,20 @@ router.put("/:id", (req, res) => {
   description = description?.trim() || null;
 
   // ✅ allow null price
-  let parsedPrice = null;
+  let parsedPrice;
 
-  if (price !== null && price !== undefined && price !== "") {
+  if (price !== undefined && price !== null && price !== "") {
     parsedPrice = parseFloat(price);
-
+  
     if (isNaN(parsedPrice) || parsedPrice < 0) {
       return res.json({ success: false, message: "Invalid price" });
     }
   }
+  console.log("Incoming price:", price);
+  console.log("Parsed price:", parsedPrice);
 
   db.query(
-    "UPDATE services SET name=?, description=?, price=?, status=? WHERE id=?",
+    "UPDATE services SET name=?, description=?, price = IFNULL(?, price), status=? WHERE id=?",
     [name, description, parsedPrice, status || "active", id],
     (err, result) => {
       if (err) {
