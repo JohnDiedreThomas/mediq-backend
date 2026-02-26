@@ -1,26 +1,24 @@
 const db = require("../db");
 
-async function runDailyCleanup() {
+function runDailyCleanup() {
   console.log("🧹 Running system cleanup...");
 
-  try {
-    await db.promise().query(`
-      UPDATE appointments
-      SET status = 'completed', arrived = 0
-      WHERE status = 'approved'
-      AND CONCAT(date, ' ', time) < NOW()
-    `);
+  db.query(`
+    UPDATE appointments
+    SET status='completed', arrived=0
+    WHERE status='approved'
+    AND CONCAT(date,' ',time) < NOW()
+  `, (err) => {
+    if (err) console.log("Cleanup appointments error:", err);
+  });
 
-    await db.promise().query(`
-      UPDATE doctor_availability
-      SET status = 'expired'
-      WHERE date < CURDATE()
-    `);
-
-    console.log("✅ Cleanup done");
-  } catch (err) {
-    console.error("🔥 Cleanup error:", err.message);
-  }
+  db.query(`
+    UPDATE doctor_availability
+    SET status='expired'
+    WHERE date < CURDATE()
+  `, (err) => {
+    if (err) console.log("Cleanup availability error:", err);
+  });
 }
 
 module.exports = runDailyCleanup;
