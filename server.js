@@ -22,6 +22,7 @@ const adminDoctorsRoutes = require("./routes/admin.doctors");
 const startReminderWorker = require("./reminderWorker");
 const runDailyCleanup = require("./utils/cleanupScheduler");
 const profileRoutes = require("./routes/profile");
+const adminAnalytics = require("./routes/admin.analytics");
 
 const app = express();
 
@@ -54,6 +55,7 @@ app.use("/api/admin/availability", adminAvailabilityRoutes);
 app.use("/api/admin/doctors", adminDoctorsRoutes);
 app.use("/api/admin/schedule", require("./routes/admin.schedule"));
 app.use("/api/admin/overview", require("./routes/admin.overview"));
+app.use("/api/admin/analytics", adminAnalytics);
 
 // 📬 OTHER FEATURES
 app.use("/api/contact", require("./routes/contact"));
