@@ -23,6 +23,8 @@ const startReminderWorker = require("./reminderWorker");
 const runDailyCleanup = require("./utils/cleanupScheduler");
 const profileRoutes = require("./routes/profile");
 const adminAnalytics = require("./routes/admin.analytics");
+console.log("adminAnalytics type:", typeof adminAnalytics);
+console.log("adminAnalytics value:", adminAnalytics);
 
 console.log("authRoutes:", typeof authRoutes);
 console.log("doctorsRoutes:", typeof doctorsRoutes);
