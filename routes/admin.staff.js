@@ -3,6 +3,7 @@ const router = express.Router();
 const db = require("../db");
 const bcrypt = require("bcryptjs");
 const adminAuth = require("../middleware/adminAuth");
+const upload = require("../middleware/uploadDoctorCloudinary");
 
 router.use(adminAuth);
 
@@ -14,7 +15,7 @@ router.use(adminAuth);
 */
 router.get("/", (req, res) => {
   db.query(
-    "SELECT id, name, email, status FROM users WHERE role = 'staff' ORDER BY id DESC",
+    "SELECT id, name, email, status, image FROM users WHERE role = 'staff' ORDER BY id DESC",
     (err, rows) => {
       if (err) return res.status(500).json({ success: false });
       res.json({ success: true, staff: rows });
@@ -154,6 +155,26 @@ router.put("/:id", (req, res) => {
         }
   
         res.json({ success: true });
+      }
+    );
+  });
+
+  router.post("/:id/image", upload.single("image"), (req, res) => {
+    const { id } = req.params;
+  
+    if (!req.file) {
+      return res.status(400).json({ success: false });
+    }
+  
+    const imageUrl = req.file.path;
+  
+    db.query(
+      "UPDATE users SET image=? WHERE id=? AND role='staff'",
+      [imageUrl, id],
+      (err) => {
+        if (err) return res.status(500).json({ success: false });
+  
+        res.json({ success: true, image: imageUrl });
       }
     );
   });
