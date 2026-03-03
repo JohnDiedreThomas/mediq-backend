@@ -21,13 +21,20 @@ router.get("/", (req, res) => {
       db.query(`
         SELECT 
           a.id,
-          a.patient_name,
           a.date,
-          a.time, 
+          a.time,
           a.status,
+          a.patient_name,
+          a.patient_age,
+          u.id AS user_id,
+          u.name AS account_name,
+          u.email,
+          u.phone,
           d.name AS doctor_name
         FROM appointments a
-        JOIN doctors d ON a.doctor = d.id
+        JOIN users u ON u.id = a.user_id
+        LEFT JOIN doctors d ON d.id = a.doctor
+        ORDER BY a.date DESC, a.time DESC
       `, (err3, appointments) => {
         if (err3) return res.json({ success: false });
 
