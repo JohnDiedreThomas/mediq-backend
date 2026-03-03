@@ -29,21 +29,20 @@ router.get("/", (req, res) => {
 | POST /api/admin/staff
 |--------------------------------------------------
 */
-router.post("/", (req, res) => {
+router.post("/", upload.single("image"), (req, res) => {
+  const imageUrl = req.file ? req.file.path : null;
     const { name, email, password } = req.body;
   
     if (!name || !email || !password) {
       return res.json({ success: false, message: "Missing fields" });
     }
   
-    const bcrypt = require("bcryptjs");
-  
     bcrypt.hash(password, 10, (err, hashed) => {
       if (err) return res.status(500).json({ success: false });
   
       db.query(
-        "INSERT INTO users (name, email, password, role, status) VALUES (?, ?, ?, 'staff', 'active')",
-        [name, email.toLowerCase(), hashed],
+        "INSERT INTO users (name, email, password, role, status, image) VALUES (?, ?, ?, 'staff', 'active', ?)",
+        [name, email.toLowerCase(), hashed, imageUrl],
         (err) => {
           if (err) {
             console.error("ADD STAFF ERROR:", err);
@@ -138,26 +137,44 @@ router.delete("/:id", (req, res) => {
 | PUT /api/admin/staff/:id
 |--------------------------------------------------
 */
-router.put("/:id", (req, res) => {
-    const { id } = req.params;
-    const { name, email } = req.body;
-  
-    if (!name || !email) {
-      return res.json({ success: false, message: "Missing fields" });
-    }
-  
+router.put("/:id", upload.single("image"), (req, res) => {
+  const { id } = req.params;
+  const { name, email } = req.body;
+
+  if (!name || !email) {
+    return res.json({ success: false, message: "Missing fields" });
+  }
+
+  // If image uploaded
+  if (req.file) {
+    const imageUrl = req.file.path;
+
     db.query(
-      "UPDATE users SET name = ?, email = ? WHERE id = ? AND role = 'staff'",
+      "UPDATE users SET name=?, email=?, image=? WHERE id=? AND role='staff'",
+      [name, email.toLowerCase(), imageUrl, id],
+      (err, result) => {
+        if (err || result.affectedRows === 0) {
+          return res.json({ success: false, message: "Update failed" });
+        }
+
+        res.json({ success: true });
+      }
+    );
+  } else {
+    // No image uploaded
+    db.query(
+      "UPDATE users SET name=?, email=? WHERE id=? AND role='staff'",
       [name, email.toLowerCase(), id],
       (err, result) => {
         if (err || result.affectedRows === 0) {
           return res.json({ success: false, message: "Update failed" });
         }
-  
+
         res.json({ success: true });
       }
     );
-  });
+  }
+});
 
   router.post("/:id/image", upload.single("image"), (req, res) => {
     const { id } = req.params;
