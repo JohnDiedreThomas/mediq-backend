@@ -5,21 +5,6 @@ const adminAuth = require("../middleware/adminAuth");
 
 router.use(adminAuth);
 
-/*
-|------------------------------------------------------------
-| THESIS-LEVEL CLINIC ANALYTICS
-|------------------------------------------------------------
-| Metrics:
-| - Patient Flow & Experience
-| - Appointment Integrity
-| - Peak / Off-Peak Times
-| - Trends
-| - Doctor Workload
-| - Status Counts
-| - Reschedule Rate
-|------------------------------------------------------------
-*/
-
 router.get("/", async (req, res) => {
   try {
     const days = Number(req.query.days) || 30;
@@ -76,7 +61,7 @@ router.get("/", async (req, res) => {
         : (completed / (completed + noShow)) * 100;
 
     /* ============================
-       3️⃣ RESCHEDULE RATE
+       3️⃣ RESCHEDULE (COUNT + RATE)
     ============================ */
     const [rescheduleResult] = await db.promise().query(
       `
@@ -88,13 +73,15 @@ router.get("/", async (req, res) => {
       [days]
     );
 
+    const rescheduledCount = rescheduleResult[0].total;
+
     const rescheduleRate =
       totalAppointments === 0
         ? 0
-        : (rescheduleResult[0].total / totalAppointments) * 100;
+        : (rescheduledCount / totalAppointments) * 100;
 
     /* ============================
-       4️⃣ TRENDS
+       4️⃣ DAILY TREND
     ============================ */
     const [trend] = await db.promise().query(
       `
@@ -138,6 +125,37 @@ router.get("/", async (req, res) => {
       [days]
     );
 
+    /* ============================
+       7️⃣ BUSIEST MONTH
+    ============================ */
+    const [monthData] = await db.promise().query(
+      `
+      SELECT 
+        DATE_FORMAT(date, '%M') AS month,
+        COUNT(*) AS total
+      FROM appointments
+      WHERE date >= CURDATE() - INTERVAL ? DAY
+      GROUP BY MONTH(date)
+      ORDER BY total DESC
+      LIMIT 1
+      `,
+      [days]
+    );
+
+    const busiestMonth =
+      monthData.length > 0
+        ? {
+            month: monthData[0].month,
+            total: monthData[0].total
+          }
+        : {
+            month: "N/A",
+            total: 0
+          };
+
+    /* ============================
+       FINAL RESPONSE
+    ============================ */
     res.json({
       success: true,
       data: {
@@ -146,9 +164,11 @@ router.get("/", async (req, res) => {
         noShowRate: Number(noShowRate.toFixed(1)),
         attendanceRate: Number(attendanceRate.toFixed(1)),
         rescheduleRate: Number(rescheduleRate.toFixed(1)),
+        rescheduledCount,     // ✅ for Summary (COUNT)
         trend,
         doctorWorkload,
-        peakHours
+        peakHours,
+        busiestMonth          // ✅ for Summary
       }
     });
 
