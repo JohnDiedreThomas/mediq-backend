@@ -133,17 +133,16 @@ router.get("/", async (req, res) => {
     /* ============================
        7️⃣ BUSIEST MONTH
     ============================ */
-    const [busiestMonthResult] = await db.promise().query(
-      `
+    const [busiestMonthResult] = await db.promise().query(`
       SELECT 
-        DATE_FORMAT(date, '%M %Y') AS month,
+        DATE_FORMAT(date, '%Y-%m') AS month_key,
+        DATE_FORMAT(MIN(date), '%M %Y') AS month,
         COUNT(*) AS total
       FROM appointments
       GROUP BY DATE_FORMAT(date, '%Y-%m')
       ORDER BY total DESC
       LIMIT 1
-      `
-    );
+    `);
 
     const busiestMonth =
       busiestMonthResult.length > 0
