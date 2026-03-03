@@ -11,12 +11,13 @@ router.use(adminAuth);
 |------------------------------------------------------------
 | Returns:
 | - Total Appointments
-| - Status Counts
+| - Status Counts (normalized)
 | - No-Show Rate
 | - Rescheduled Count
-| - Trends
+| - Daily Trends
 | - Doctor Workload
 | - Peak Hours
+| - Monthly Trend (for graph)
 | - Busiest Month
 |------------------------------------------------------------
 */
@@ -25,9 +26,7 @@ router.get("/", async (req, res) => {
   try {
     const days = Number(req.query.days) || 30;
 
-    /* ============================
-       1️⃣ TOTAL APPOINTMENTS
-    ============================ */
+    /* 1️⃣ TOTAL APPOINTMENTS */
     const [totalResult] = await db.promise().query(
       `
       SELECT COUNT(*) AS total
@@ -39,10 +38,8 @@ router.get("/", async (req, res) => {
 
     const totalAppointments = totalResult[0].total || 0;
 
-    /* ============================
-       2️⃣ STATUS COUNTS
-    ============================ */
-    const [statusCounts] = await db.promise().query(
+    /* 2️⃣ STATUS COUNTS */
+    const [rawStatusCounts] = await db.promise().query(
       `
       SELECT status, COUNT(*) AS total
       FROM appointments
@@ -52,22 +49,35 @@ router.get("/", async (req, res) => {
       [days]
     );
 
-    let completed = 0;
-    let noShow = 0;
+    // Normalize statuses (so even 0 appears)
+    const ALL_STATUSES = [
+      "completed",
+      "cancelled",
+      "no_show",
+      "approved",
+      "pending",
+    ];
 
-    statusCounts.forEach((s) => {
-      if (s.status === "completed") completed = s.total;
-      if (s.status === "no_show") noShow = s.total;
+    const statusCounts = ALL_STATUSES.map((status) => {
+      const found = rawStatusCounts.find((s) => s.status === status);
+      return {
+        status,
+        total: found ? found.total : 0,
+      };
     });
+
+    const completed =
+      statusCounts.find((s) => s.status === "completed")?.total || 0;
+
+    const noShow =
+      statusCounts.find((s) => s.status === "no_show")?.total || 0;
 
     const noShowRate =
       totalAppointments === 0
         ? 0
         : (noShow / totalAppointments) * 100;
 
-    /* ============================
-       3️⃣ RESCHEDULE COUNT
-    ============================ */
+    /* 3️⃣ RESCHEDULE COUNT */
     const [rescheduleResult] = await db.promise().query(
       `
       SELECT COUNT(*) AS total
@@ -85,9 +95,7 @@ router.get("/", async (req, res) => {
         ? 0
         : (rescheduledCount / totalAppointments) * 100;
 
-    /* ============================
-       4️⃣ TRENDS (Daily)
-    ============================ */
+    /* 4️⃣ DAILY TREND */
     const [trend] = await db.promise().query(
       `
       SELECT DATE(date) AS day, COUNT(*) AS total
@@ -99,9 +107,7 @@ router.get("/", async (req, res) => {
       [days]
     );
 
-    /* ============================
-       5️⃣ DOCTOR WORKLOAD
-    ============================ */
+    /* 5️⃣ DOCTOR WORKLOAD */
     const [doctorWorkload] = await db.promise().query(
       `
       SELECT d.name, COUNT(a.id) AS total
@@ -114,9 +120,7 @@ router.get("/", async (req, res) => {
       [days]
     );
 
-    /* ============================
-       6️⃣ PEAK HOURS
-    ============================ */
+    /* 6️⃣ PEAK HOURS */
     const [peakHours] = await db.promise().query(
       `
       SELECT 
@@ -130,29 +134,26 @@ router.get("/", async (req, res) => {
       [days]
     );
 
-    /* ============================
-       7️⃣ BUSIEST MONTH
-    ============================ */
-    const [busiestMonthResult] = await db.promise().query(`
+    /* 7️⃣ MONTHLY TREND (FOR GRAPH) */
+    const [monthlyTrend] = await db.promise().query(`
       SELECT 
         DATE_FORMAT(date, '%Y-%m') AS month_key,
-        DATE_FORMAT(MIN(date), '%M %Y') AS month,
+        DATE_FORMAT(MIN(date), '%b %Y') AS month,
         COUNT(*) AS total
       FROM appointments
       GROUP BY DATE_FORMAT(date, '%Y-%m')
-      ORDER BY total DESC
-      LIMIT 1
+      ORDER BY month_key ASC
     `);
 
+    /* 8️⃣ BUSIEST MONTH */
     const busiestMonth =
-      busiestMonthResult.length > 0
-        ? busiestMonthResult[0]
+      monthlyTrend.length > 0
+        ? monthlyTrend.reduce((max, current) =>
+            current.total > max.total ? current : max
+          )
         : null;
 
-    /* ============================
-       RESPONSE
-    ============================ */
-
+    /* RESPONSE */
     res.json({
       success: true,
       data: {
@@ -164,6 +165,7 @@ router.get("/", async (req, res) => {
         trend,
         doctorWorkload,
         peakHours,
+        monthlyTrend,
         busiestMonth,
       },
     });
