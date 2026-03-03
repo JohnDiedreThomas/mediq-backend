@@ -5,6 +5,22 @@ const adminAuth = require("../middleware/adminAuth");
 
 router.use(adminAuth);
 
+/*
+|------------------------------------------------------------
+| THESIS-LEVEL CLINIC ANALYTICS
+|------------------------------------------------------------
+| Returns:
+| - Total Appointments
+| - Status Counts
+| - No-Show Rate
+| - Rescheduled Count
+| - Trends
+| - Doctor Workload
+| - Peak Hours
+| - Busiest Month
+|------------------------------------------------------------
+*/
+
 router.get("/", async (req, res) => {
   try {
     const days = Number(req.query.days) || 30;
@@ -21,7 +37,7 @@ router.get("/", async (req, res) => {
       [days]
     );
 
-    const totalAppointments = totalResult[0].total;
+    const totalAppointments = totalResult[0].total || 0;
 
     /* ============================
        2️⃣ STATUS COUNTS
@@ -38,16 +54,10 @@ router.get("/", async (req, res) => {
 
     let completed = 0;
     let noShow = 0;
-    let cancelled = 0;
-    let pending = 0;
-    let approved = 0;
 
-    statusCounts.forEach(s => {
+    statusCounts.forEach((s) => {
       if (s.status === "completed") completed = s.total;
       if (s.status === "no_show") noShow = s.total;
-      if (s.status === "cancelled") cancelled = s.total;
-      if (s.status === "pending") pending = s.total;
-      if (s.status === "approved") approved = s.total;
     });
 
     const noShowRate =
@@ -55,13 +65,8 @@ router.get("/", async (req, res) => {
         ? 0
         : (noShow / totalAppointments) * 100;
 
-    const attendanceRate =
-      completed + noShow === 0
-        ? 0
-        : (completed / (completed + noShow)) * 100;
-
     /* ============================
-       3️⃣ RESCHEDULE (COUNT + RATE)
+       3️⃣ RESCHEDULE COUNT
     ============================ */
     const [rescheduleResult] = await db.promise().query(
       `
@@ -73,7 +78,7 @@ router.get("/", async (req, res) => {
       [days]
     );
 
-    const rescheduledCount = rescheduleResult[0].total;
+    const rescheduledCount = rescheduleResult[0].total || 0;
 
     const rescheduleRate =
       totalAppointments === 0
@@ -81,7 +86,7 @@ router.get("/", async (req, res) => {
         : (rescheduledCount / totalAppointments) * 100;
 
     /* ============================
-       4️⃣ DAILY TREND
+       4️⃣ TRENDS (Daily)
     ============================ */
     const [trend] = await db.promise().query(
       `
@@ -128,50 +133,41 @@ router.get("/", async (req, res) => {
     /* ============================
        7️⃣ BUSIEST MONTH
     ============================ */
-    const [monthData] = await db.promise().query(
+    const [busiestMonthResult] = await db.promise().query(
       `
       SELECT 
-        DATE_FORMAT(date, '%M') AS month,
+        DATE_FORMAT(date, '%M %Y') AS month,
         COUNT(*) AS total
       FROM appointments
-      WHERE date >= CURDATE() - INTERVAL ? DAY
-      GROUP BY MONTH(date)
+      GROUP BY DATE_FORMAT(date, '%Y-%m')
       ORDER BY total DESC
       LIMIT 1
-      `,
-      [days]
+      `
     );
 
     const busiestMonth =
-      monthData.length > 0
-        ? {
-            month: monthData[0].month,
-            total: monthData[0].total
-          }
-        : {
-            month: "N/A",
-            total: 0
-          };
+      busiestMonthResult.length > 0
+        ? busiestMonthResult[0]
+        : null;
 
     /* ============================
-       FINAL RESPONSE
+       RESPONSE
     ============================ */
+
     res.json({
       success: true,
       data: {
         totalAppointments,
         statusCounts,
         noShowRate: Number(noShowRate.toFixed(1)),
-        attendanceRate: Number(attendanceRate.toFixed(1)),
         rescheduleRate: Number(rescheduleRate.toFixed(1)),
-        rescheduledCount,     // ✅ for Summary (COUNT)
+        rescheduledCount,
         trend,
         doctorWorkload,
         peakHours,
-        busiestMonth          // ✅ for Summary
-      }
+        busiestMonth,
+      },
     });
-
   } catch (error) {
     console.error("ANALYTICS ERROR:", error);
     res.status(500).json({ success: false });
