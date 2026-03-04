@@ -79,6 +79,8 @@ router.post("/", (req, res) => {
     time,
     patient_name,
     patient_age,
+    patient_gender,          
+    connection_to_clinic, 
     patient_notes,
   } = req.body;
 
@@ -106,7 +108,9 @@ router.post("/", (req, res) => {
     !date ||
     !time ||
     !patient_name ||
-    !patient_age
+    !patient_age ||
+    !patient_gender ||            
+    !connection_to_clinic 
   ) {
     return res.json({ success: false, message: "Missing fields" });
   }
@@ -147,8 +151,8 @@ router.post("/", (req, res) => {
 
         const insertSql = `
           INSERT INTO appointments
-          (user_id, service_id, service, doctor, date, time, patient_name, patient_age, patient_notes, status)
-          VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 'pending')
+          (user_id, service_id, service, doctor, date, time, patient_name, patient_age, patient_gender, connection_to_clinic, patient_notes, status)
+           VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'pending')
         `;
 
         conn.query(
@@ -162,6 +166,8 @@ router.post("/", (req, res) => {
             time,
             patient_name,
             patient_age,
+            patient_gender,
+            connection_to_clinic,
             patient_notes || null,
           ],
           (err) => {
@@ -281,6 +287,8 @@ router.put("/:id", (req, res) => {
     time,
     patient_name,
     patient_age,
+    patient_gender,         
+    connection_to_clinic, 
     patient_notes,
   } = req.body;
 
@@ -396,7 +404,8 @@ router.put("/:id", (req, res) => {
                               conn.query(
                                 `UPDATE appointments
                                  SET service=?, doctor=?, date=?, time=?,
-                                     patient_name=?, patient_age=?, patient_notes=?,
+                                     patient_name=?, patient_age=?,  patient_gender=?, connection_to_clinic=?, 
+                                     patient_notes=?,
                                      rescheduled=1, reminder_sent=0
                                  WHERE id=?`,
                                 [
@@ -406,6 +415,8 @@ router.put("/:id", (req, res) => {
                                   time,
                                   patient_name,
                                   patient_age,
+                                  patient_gender,
+                                  connection_to_clinic,
                                   patient_notes || null,
                                   id,
                                 ],
@@ -676,24 +687,6 @@ router.get("/doctor/:doctor_id", (req, res) => {
 | APPROVE APPOINTMENT (STAFF)
 |--------------------------------------------------------------------------
 */
-
-function convertTo24Hour(timeStr) {
-  if (!timeStr) return "00:00:00";
-
-  const parts = timeStr.trim().split(" ");
-  if (parts.length === 1) return parts[0] + ":00";
-
-  const [time, modifier] = parts;
-  let [hours, minutes] = time.split(":");
-
-  hours = parseInt(hours, 10);
-
-  if (modifier.toUpperCase() === "PM" && hours !== 12) hours += 12;
-  if (modifier.toUpperCase() === "AM" && hours === 12) hours = 0;
-
-  return `${String(hours).padStart(2, "0")}:${minutes}:00`;
-}
-
 router.put("/:id/approve", (req, res) => {
   const { id } = req.params;
 

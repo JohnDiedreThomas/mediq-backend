@@ -153,6 +153,28 @@ router.get("/", async (req, res) => {
           )
         : null;
 
+
+        /* 9️⃣ GENDER DISTRIBUTION */
+const [genderDistribution] = await db.promise().query(
+  `
+  SELECT patient_gender, COUNT(*) AS total
+  FROM appointments
+  WHERE date >= CURDATE() - INTERVAL ? DAY
+  GROUP BY patient_gender
+  `,
+  [days]
+);
+/* 🔟 CONNECTION DISTRIBUTION */
+const [connectionDistribution] = await db.promise().query(
+  `
+  SELECT connection_to_clinic, COUNT(*) AS total
+  FROM appointments
+  WHERE date >= CURDATE() - INTERVAL ? DAY
+  GROUP BY connection_to_clinic
+  `,
+  [days]
+);
+
     /* RESPONSE */
     res.json({
       success: true,
@@ -167,6 +189,8 @@ router.get("/", async (req, res) => {
         peakHours,
         monthlyTrend,
         busiestMonth,
+        genderDistribution,
+        connectionDistribution,
       },
     });
   } catch (error) {
@@ -174,5 +198,6 @@ router.get("/", async (req, res) => {
     res.status(500).json({ success: false });
   }
 });
+
 
 module.exports = router;
