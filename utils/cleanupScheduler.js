@@ -7,7 +7,7 @@ function runDailyCleanup() {
     UPDATE appointments
     SET status='completed', arrived=0
     WHERE status='approved'
-    AND CONCAT(date,' ',time) < NOW()
+    AND STR_TO_DATE(CONCAT(date,' ',time), '%Y-%m-%d %h:%i %p') < NOW()
   `, (err) => {
     if (err) console.log("Cleanup appointments error:", err);
   });
