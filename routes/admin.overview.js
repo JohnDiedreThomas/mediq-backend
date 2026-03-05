@@ -37,6 +37,7 @@ router.get("/", (req, res) => {
         FROM appointments a
         JOIN users u ON u.id = a.user_id
         LEFT JOIN doctors d ON d.id = a.doctor
+        LEFT JOIN services s ON s.id = a.service_id
         ORDER BY a.date DESC, a.time DESC
       `, (err3, appointments) => {
         if (err3) return res.json({ success: false });
