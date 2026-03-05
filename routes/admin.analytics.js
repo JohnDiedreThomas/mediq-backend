@@ -175,6 +175,20 @@ const [connectionDistribution] = await db.promise().query(
   [days]
 );
 
+/* 1️⃣1️⃣ MOST USED SERVICES */
+const [serviceDistribution] = await db.promise().query(
+  `
+  SELECT COALESCE(s.name, 'Unknown Service') AS service, COUNT(a.id) AS total
+  FROM appointments a
+  LEFT JOIN services s ON s.id = a.service_id
+  WHERE a.date >= CURDATE() - INTERVAL ? DAY
+  GROUP BY s.name
+  ORDER BY total DESC
+  LIMIT 5
+  `,
+  [days]
+  );
+
     /* RESPONSE */
     res.json({
       success: true,
@@ -191,6 +205,7 @@ const [connectionDistribution] = await db.promise().query(
         busiestMonth,
         genderDistribution,
         connectionDistribution,
+        serviceDistribution
       },
     });
   } catch (error) {
