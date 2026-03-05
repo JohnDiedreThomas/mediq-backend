@@ -26,6 +26,9 @@ router.get("/", (req, res) => {
           a.status,
           a.patient_name,
           a.patient_age,
+          a.patient_gender,
+          a.connection_to_clinic,
+          a.patient_notes,
           u.id AS user_id,
           u.name AS account_name,
           u.email,
@@ -37,6 +40,8 @@ router.get("/", (req, res) => {
         ORDER BY a.date DESC, a.time DESC
       `, (err3, appointments) => {
         if (err3) return res.json({ success: false });
+        console.log("APPOINTMENTS RESULT:", appointments);
+
 
         data.appointments = appointments;
 
