@@ -91,6 +91,7 @@ router.put("/:id", (req, res) => {
         console.error("UPDATE SERVICE ERROR:", err);
         return res.json({ success: false });
       }
+      console.log("SQL RESULT:", result); // <-- ADD THIS
   
       if (result.affectedRows === 0) {
         return res.json({
