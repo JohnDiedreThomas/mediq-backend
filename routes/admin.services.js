@@ -73,18 +73,19 @@ router.put("/:id", (req, res) => {
   description = description?.trim() || null;
 
   // ✅ allow null price
-  let parsedPrice;
+  let parsedPrice = null;
 
-  if (price !== undefined && price !== null && price !== "") {
-    parsedPrice = parseFloat(price);
-  
-    if (isNaN(parsedPrice) || parsedPrice < 0) {
-      return res.json({ success: false, message: "Invalid price" });
-    }
+if (price !== undefined && price !== null && price !== "") {
+  parsedPrice = parseFloat(price);
+
+  if (isNaN(parsedPrice) || parsedPrice < 0) {
+    return res.json({ success: false, message: "Invalid price" });
   }
+}
   console.log("Incoming price:", price);
   console.log("Parsed price:", parsedPrice);
-
+  console.log("Updating service price to:", parsedPrice);
+  
   db.query(
     "UPDATE services SET name=?, description=?, price=?, status=? WHERE id=?",
     [name, description, parsedPrice, status || "active", id],
