@@ -44,6 +44,8 @@ router.post("/", (req, res) => {
      WHERE user_id = ?
      AND status IN ('approved','arrived')
      AND DATE(date) = DATE(CONVERT_TZ(NOW(), '+00:00', '+08:00'))
+     AND NOW() BETWEEN DATE_SUB(date, INTERVAL 3 HOUR)
+            AND DATE_ADD(date, INTERVAL 4 HOUR)
      LIMIT 1`,
     [userId],
     (err, rows) => {
@@ -255,7 +257,30 @@ router.get("/nearby", (req, res) => {
         
         });
       
-      res.json({ success: true, patients });
+        const insideCount = patients.length;
+
+        const longWait = patients.filter(p => (p.waitingMinutes ?? 0) > 10).length;
+        
+        const waits = patients
+          .map(p => p.waitingMinutes || 0)
+          .filter(w => w > 0);
+        
+        const longestWait = waits.length ? Math.max(...waits) : 0;
+        
+        const averageWait = waits.length
+          ? Math.round(waits.reduce((a,b)=>a+b,0) / waits.length)
+          : 0;
+        
+        res.json({
+          success: true,
+          patients,
+          stats: {
+            inside: insideCount,
+            longWait,
+            longestWait,
+            averageWait
+          }
+        });
 
     }
   );
