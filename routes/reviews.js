@@ -90,4 +90,41 @@ router.put("/:id", (req, res) => {
 
 });
 
+
+/* =====================
+   DELETE REVIEW (SAFE)
+===================== */
+router.delete("/:id", (req, res) => {
+
+  const reviewId = parseInt(req.params.id);
+  const { user_id } = req.body;
+
+  if (!user_id) {
+    return res.json({ success: false, message: "Missing user ID" });
+  }
+
+  const sql = `
+    DELETE FROM doctor_reviews
+    WHERE id = ? AND user_id = ?
+  `;
+
+  db.query(sql, [reviewId, user_id], (err, result) => {
+
+    if (err) {
+      console.error(err);
+      return res.json({ success: false });
+    }
+
+    if (result.affectedRows === 0) {
+      return res.json({
+        success: false,
+        message: "You can only delete your own review"
+      });
+    }
+
+    res.json({ success: true });
+
+  });
+
+});
 module.exports = router;
