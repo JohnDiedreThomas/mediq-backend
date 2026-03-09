@@ -17,6 +17,9 @@ router.post("/", (req, res) => {
   const sql = `
     INSERT INTO doctor_reviews (doctor_id, user_id, rating, comment)
     VALUES (?, ?, ?, ?)
+    ON DUPLICATE KEY UPDATE
+      rating = VALUES(rating),
+      comment = VALUES(comment)
   `;
 
   db.query(sql, [doctor_id, user_id, rating, comment || null], (err) => {
