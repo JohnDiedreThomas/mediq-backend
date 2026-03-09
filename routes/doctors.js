@@ -72,7 +72,31 @@ router.get("/", (req, res) => {
   });
 });
 
+/* =====================
+   GET SERVICES FOR A DOCTOR
+===================== */
+router.get("/:id/services", (req, res) => {
+  const { id } = req.params;
 
+  const sql = `
+    SELECT s.id, s.name, s.image
+    FROM services s
+    JOIN doctors d ON s.category = d.specialty
+    WHERE d.id = ?
+  `;
+
+  db.query(sql, [id], (err, results) => {
+    if (err) {
+      console.error(err);
+      return res.json({ success: false });
+    }
+
+    res.json({
+      success: true,
+      services: results,
+    });
+  });
+});
 
 /* =====================
    GET SINGLE DOCTOR (DETAIL PAGE)
