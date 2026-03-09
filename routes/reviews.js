@@ -56,4 +56,35 @@ router.get("/:doctorId", (req, res) => {
   });
 });
 
+/* =====================
+   UPDATE REVIEW
+===================== */
+router.put("/:id", (req, res) => {
+
+  const reviewId = parseInt(req.params.id);
+  const { rating, comment } = req.body;
+
+  if (!rating) {
+    return res.json({ success:false, message:"Missing rating" });
+  }
+
+  const sql = `
+    UPDATE doctor_reviews
+    SET rating = ?, comment = ?
+    WHERE id = ?
+  `;
+
+  db.query(sql, [rating, comment || null, reviewId], (err) => {
+
+    if (err) {
+      console.error(err);
+      return res.json({ success:false });
+    }
+
+    res.json({ success:true });
+
+  });
+
+});
+
 module.exports = router;
