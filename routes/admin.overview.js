@@ -34,10 +34,20 @@ router.get("/", (req, res) => {
           u.name AS account_name,
           u.email,
           u.phone,
-          d.name AS doctor_name
+          d.name AS doctor_name,
+          u1.name AS approved_by_name,
+u2.name AS cancelled_by_name,
+u3.name AS completed_by_name,
+u4.name AS arrived_by_name,
+u5.name AS no_show_by_name
         FROM appointments a
         JOIN users u ON u.id = a.user_id
         LEFT JOIN doctors d ON d.id = a.doctor
+        LEFT JOIN users u1 ON u1.id = a.approved_by
+        LEFT JOIN users u2 ON u2.id = a.cancelled_by
+        LEFT JOIN users u3 ON u3.id = a.completed_by
+        LEFT JOIN users u4 ON u4.id = a.arrived_by
+        LEFT JOIN users u5 ON u5.id = a.no_show_by
         LEFT JOIN services s ON s.id = a.service_id
         ORDER BY a.date DESC, a.time DESC
       `, (err3, appointments) => {
