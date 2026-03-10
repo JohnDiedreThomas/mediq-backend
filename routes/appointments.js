@@ -1017,7 +1017,6 @@ router.put("/:id/status", (req, res) => {
 
   if (status === "arrived") column = "arrived_by";
   if (status === "no_show") column = "no_show_by";
-  if (status === "completed") column = "completed_by";
 
   db.query(
     `UPDATE appointments
