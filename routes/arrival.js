@@ -45,8 +45,6 @@ router.post("/", (req, res) => {
      WHERE user_id = ?
      AND status IN ('approved','arrived')
      AND DATE(date) = DATE(CONVERT_TZ(NOW(), '+00:00', '+08:00'))
-     AND NOW() BETWEEN DATE_SUB(date, INTERVAL 3 HOUR)
-            AND DATE_ADD(date, INTERVAL 4 HOUR)
      LIMIT 1`,
     [userId],
     (err, rows) => {
@@ -83,6 +81,7 @@ router.post("/", (req, res) => {
           console.log("📍 Distance:", dClinic);
           console.log("📍 Today PH:", new Date().toLocaleString());
           console.log(`[GPS] User ${userId} distance ${dClinic.toFixed(2)}m`);
+          console.log("Distance to clinic:", dClinic);
 
           if (dClinic <= CLINIC.radius + BUFFER) {
 
