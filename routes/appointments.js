@@ -502,6 +502,7 @@ router.put("/:id", (req, res) => {
 */
 router.put("/:id/cancel", (req, res) => {
   const { id } = req.params;
+  const staffId = req.headers["x-user-id"];
 
   db.getConnection((err, conn) => {
     if (err) return res.json({ success: false });
@@ -516,7 +517,7 @@ router.put("/:id/cancel", (req, res) => {
         `SELECT status, doctor, date, time, user_id
          FROM appointments
          WHERE id = ?`,
-        [id],
+         [id],
         (err, rows) => {
           if (err || rows.length === 0) {
             return conn.rollback(() => {
@@ -551,10 +552,11 @@ router.put("/:id/cancel", (req, res) => {
           conn.query(
             `UPDATE appointments
              SET status = 'cancelled', 
+                cancelled_by = ?,
                  arrived = 0, 
                  reminder_sent = 1
              WHERE id = ?`,
-            [id],
+             [staffId, id],
             (err) => {
               if (err) {
                 return conn.rollback(() => {
@@ -689,6 +691,7 @@ router.get("/doctor/:doctor_id", (req, res) => {
 */
 router.put("/:id/approve", (req, res) => {
   const { id } = req.params;
+  const staffId = req.headers["x-user-id"];
 
   console.log("✅ APPROVE HIT:", id);
 
@@ -719,10 +722,11 @@ router.put("/:id/approve", (req, res) => {
       db.query(
         `UPDATE appointments
          SET status = 'approved',
+         approved_by = ?,
             rescheduled = 0,
             reminder_sent = 0
          WHERE id = ? AND status = 'pending'`,
-        [id],
+         [staffId, id],
         (err, result) => {
           if (err || result.affectedRows === 0) {
             console.log("❌ Update failed");
@@ -738,7 +742,7 @@ router.put("/:id/approve", (req, res) => {
              JOIN users u ON u.id = a.user_id
              LEFT JOIN doctors d ON d.id = a.doctor
              WHERE a.id = ?`,
-            [id],
+             [id],
             async (err, rows) => {
               if (err || rows.length === 0) {
                 return res.json({ success: true });
@@ -803,6 +807,7 @@ router.put("/:id/approve", (req, res) => {
 */
 router.put("/:id/complete", (req, res) => {
   const { id } = req.params;
+  const staffId = req.headers["x-user-id"];
 
   db.getConnection((err, conn) => {
     if (err) return res.json({ success: false });
@@ -816,10 +821,11 @@ router.put("/:id/complete", (req, res) => {
       conn.query(
         `UPDATE appointments
          SET status = 'completed',
+             completed_by = ?,
              arrived = 0,
              reminder_sent = 1
          WHERE id = ? AND status IN ('approved','arrived')`,
-        [id],
+         [staffId, id],
         (err, result) => {
           if (err || result.affectedRows === 0) {
             return conn.rollback(() => {
@@ -999,15 +1005,25 @@ router.put("/:id/status", (req, res) => {
   const { id } = req.params;
   const { status } = req.body;
 
-  const allowed = ["arrived", "no_show", "completed"];
+  const staffId = req.headers["x-user-id"];
+
+  const allowed = ["arrived", "no_show"];
 
   if (!allowed.includes(status)) {
     return res.json({ success: false, message: "Invalid status" });
   }
 
+  let column = null;
+
+  if (status === "arrived") column = "arrived_by";
+  if (status === "no_show") column = "no_show_by";
+  if (status === "completed") column = "completed_by";
+
   db.query(
-    "UPDATE appointments SET status = ? WHERE id = ?",
-    [status, id],
+    `UPDATE appointments
+     SET status = ?, ${column} = ?
+     WHERE id = ?`,
+    [status, staffId, id],
     (err) => {
       if (err) {
         console.error(err);
@@ -1026,7 +1042,7 @@ router.put("/:id/status", (req, res) => {
             await sendPushNotification(
               rows[0].push_token,
               "Appointment Status Update",
-              `You just ${status} at the clinic`
+              `Your appointment status is now ${status.replace("_", " ")}`
             );
           }
         }
