@@ -97,7 +97,7 @@ router.post("/login", (req, res) => {
 
     const isMatch = await bcrypt.compare(
       password,
-      user.password.trim()
+      user.password
     );
 
     console.log("BCRYPT MATCH:", isMatch);
@@ -149,7 +149,7 @@ router.get("/me/:id", (req, res) => {
 ===================== */
 router.put("/profile/:id", async (req, res) => {
   const { id } = req.params;
-  const { name, phone, password } = req.body;
+  const { name, phone, password, currentPassword } = req.body;
 
   if (!name) {
     return res.json({ success: false, message: "Name required" });
@@ -160,8 +160,40 @@ router.put("/profile/:id", async (req, res) => {
     let params;
 
     if (password && password.length >= 6) {
-      const hashedPassword = await bcrypt.hash(password, 10);
+      
+      if (!currentPassword) {
+        return res.json({
+          success: false,
+          message: "Current password required"
+        });
+      }
 
+      // get user's current password from database
+      const [rows] = await db.promise().query(
+        "SELECT password FROM users WHERE id = ?",
+        [id]
+      );
+    
+      if (!rows.length) {
+        return res.json({ success: false, message: "User not found" });
+      }
+    
+      // check if current password is correct
+      const match = await bcrypt.compare(
+        currentPassword || "",
+        rows[0].password
+      );
+    
+      if (!match) {
+        return res.json({
+          success: false,
+          message: "Current password incorrect"
+        });
+      }
+    
+      // hash new password
+      const hashedPassword = await bcrypt.hash(password, 10);
+    
       sql = `
         UPDATE users
         SET name = ?, phone = ?, password = ?
@@ -318,7 +350,7 @@ router.post("/reset-password", async (req, res) => {
 
   const { token, password } = req.body;
 
-  if (!token || !password) {
+  if (!token || !password || password.length < 6) {
     return res.json({ success: false });
   }
 
