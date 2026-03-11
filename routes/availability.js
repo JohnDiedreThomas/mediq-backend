@@ -24,12 +24,14 @@ FROM (
     SUM(
       CASE
         -- Ignore past slots today
-        WHEN DATE(date) = CURDATE() AND time_value <= CURTIME() THEN 0
+        WHEN DATE(date) = CURDATE() AND time_value <= CURTIME()
+        THEN 0
 
         -- Ignore full slots
-        WHEN (total_slots - booked_slots) <= 0 THEN 0
+        WHEN (total_slots - booked_slots) <= 0
+        THEN 0
 
-        -- Count only future available slots
+        -- Count valid future slots
         ELSE (total_slots - booked_slots)
       END
     ) AS remaining
