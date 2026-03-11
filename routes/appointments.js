@@ -1269,4 +1269,43 @@ router.put("/:id/staff-reschedule", (req, res) => {
     });
   });
 });
+
+/*
+|--------------------------------------------------
+| CHECK DUPLICATE BOOKING (SAME USER SAME SLOT)
+|--------------------------------------------------
+*/
+router.get("/check-duplicate", (req, res) => {
+
+  const { user_id, doctor, date, time } = req.query;
+
+  if (!user_id || !doctor || !date || !time) {
+    return res.json({ duplicate: false });
+  }
+
+  db.query(
+    `SELECT id
+     FROM appointments
+     WHERE user_id = ?
+     AND doctor = ?
+     AND date = ?
+     AND time = ?
+     AND status != 'cancelled'
+     LIMIT 1`,
+    [user_id, doctor, date, time],
+    (err, rows) => {
+
+      if (err) {
+        console.error("Duplicate check error:", err);
+        return res.json({ duplicate: false });
+      }
+
+      res.json({
+        duplicate: rows.length > 0
+      });
+
+    }
+  );
+
+});
 module.exports = router;
