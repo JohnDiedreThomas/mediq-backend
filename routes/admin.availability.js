@@ -3,20 +3,6 @@ const router = express.Router();
 const db = require("../db");
 const adminAuth = require("../middleware/adminAuth");
 
-function convertTo24Hour(timeStr) {
-  const match = timeStr.match(/(\d{1,2}):(\d{2})\s*(AM|PM)/i);
-  if (!match) return null;
-
-  let [_, h, m, mod] = match;
-
-  h = parseInt(h);
-
-  if (mod.toUpperCase() === "PM" && h !== 12) h += 12;
-  if (mod.toUpperCase() === "AM" && h === 12) h = 0;
-
-  return `${String(h).padStart(2, "0")}:${m}:00`;
-}
-
 router.use(adminAuth);
 
 /*
@@ -176,8 +162,7 @@ router.get("/:doctorId/:date", (req, res) => {
 */
 router.post("/:doctorId/:date/slot", (req, res) => {
   const { doctorId, date } = req.params;
-  const { time, total_slots } = req.body;
-const time_value = convertTo24Hour(time);
+  const { time, time_value, total_slots } = req.body;
 
   const today = new Date();
 today.setHours(0,0,0,0);
