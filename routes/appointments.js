@@ -943,10 +943,12 @@ router.get("/", (req, res) => {
     `
     SELECT 
       a.*,
+      u.phone AS patient_phone,
       d.name AS doctor_name,
       d.specialty AS doctor_specialty
     FROM appointments a
     LEFT JOIN doctors d ON d.id = a.doctor
+    LEFT JOIN users u ON u.id = a.user_id
     ORDER BY a.date DESC, a.time DESC
     `,
     (err, results) => {
