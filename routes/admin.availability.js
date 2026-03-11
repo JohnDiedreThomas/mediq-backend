@@ -4,7 +4,25 @@ const db = require("../db");
 const adminAuth = require("../middleware/adminAuth");
 
 router.use(adminAuth);
+function formatTimeAMPM(time) {
+  if (!time) return time;
 
+  // if already AM/PM do nothing
+  if (time.toUpperCase().includes("AM") || time.toUpperCase().includes("PM")) {
+    return time;
+  }
+
+  const [h, m] = time.split(":").map(Number);
+
+  const date = new Date();
+  date.setHours(h, m);
+
+  return date.toLocaleTimeString("en-US", {
+    hour: "numeric",
+    minute: "2-digit",
+    hour12: true,
+  });
+}
 /*
 |--------------------------------------------------------------------------
 | GET availability dates for doctor (admin calendar)
@@ -164,6 +182,8 @@ router.post("/:doctorId/:date/slot", (req, res) => {
   const { doctorId, date } = req.params;
   const { time, time_value, total_slots } = req.body;
 
+  const formattedTime = formatTimeAMPM(time);
+
   const today = new Date();
 today.setHours(0,0,0,0);
 
@@ -224,7 +244,7 @@ if (targetDate < today) {
 
       db.query(
         insertSql,
-        [doctorId, date, time, time_value, Number(total_slots)],
+        [doctorId, date, formattedTime, time_value, Number(total_slots)],
         (err3) => {
           if (err3) {
             console.error("ADD SLOT ERROR:", err3);
