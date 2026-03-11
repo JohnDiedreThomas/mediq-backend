@@ -125,6 +125,38 @@ router.post("/", (req, res) => {
         return res.status(500).json({ success: false });
       }
 
+        // ✅ NEW: CHECK IF SAME USER ALREADY BOOKED THIS SLOT
+        const duplicateSql = `
+        SELECT id
+        FROM appointments
+        WHERE user_id = ?
+        AND doctor = ?
+        AND date = ?
+        AND time = ?
+        AND status != 'cancelled'
+        LIMIT 1
+      `;
+
+      conn.query(duplicateSql, [user_id, doctor, date, time], (err, dupRows) => {
+
+        if (err) {
+          return conn.rollback(() => {
+            conn.release();
+            res.json({ success: false });
+          });
+        }
+
+        // 🚫 SAME USER DUPLICATE SLOT
+        if (dupRows.length > 0) {
+          return conn.rollback(() => {
+            conn.release();
+            res.json({
+              success: false,
+              message: "You already have an appointment at this time slot",
+            });
+          });
+        }
+
       const lockSlotSql = `
         SELECT id, total_slots, booked_slots
         FROM doctor_time_slots
@@ -267,6 +299,7 @@ router.post("/", (req, res) => {
         );
       });
     });
+  });
   });
 });
 
