@@ -54,6 +54,11 @@ router.get("/", (req, res) => {
 router.post("/", upload.single("image"), (req, res) => {
   const imageUrl = req.file ? req.file.path : null;
   const { name, email, password, phone } = req.body;
+  let formattedPhone = phone;
+
+if (phone && phone.length === 10 && phone.startsWith("9")) {
+  formattedPhone = "0" + phone;
+}
   
     if (!name || !email || !password) {
       return res.json({ success: false, message: "Missing fields" });
@@ -64,7 +69,7 @@ router.post("/", upload.single("image"), (req, res) => {
   
       db.query(
         "INSERT INTO users (name, email, password, phone, role, status, image) VALUES (?, ?, ?, ?, 'staff', 'active', ?)",
-        [name, email.toLowerCase(), hashed, phone, imageUrl],
+        [name, email.toLowerCase(), hashed, formattedPhone, imageUrl],
         (err) => {
           if (err) {
             console.error("ADD STAFF ERROR:", err);
@@ -162,6 +167,11 @@ router.delete("/:id", (req, res) => {
 router.put("/:id", upload.single("image"), (req, res) => {
   const { id } = req.params;
   const { name, email, phone } = req.body;
+  let formattedPhone = phone;
+
+if (phone && phone.length === 10 && phone.startsWith("9")) {
+  formattedPhone = "0" + phone;
+}
 
   if (!name || !email) {
     return res.json({ success: false, message: "Missing fields" });
@@ -173,7 +183,7 @@ router.put("/:id", upload.single("image"), (req, res) => {
 
     db.query(
       "UPDATE users SET name=?, email=?, phone=?, image=? WHERE id=? AND role='staff'",
-      [name, email.toLowerCase(), phone, imageUrl, id],
+      [name, email.toLowerCase(), formattedPhone, imageUrl, id],
       (err, result) => {
         if (err || result.affectedRows === 0) {
           return res.json({ success: false, message: "Update failed" });
@@ -186,7 +196,7 @@ router.put("/:id", upload.single("image"), (req, res) => {
     // No image uploaded
     db.query(
       "UPDATE users SET name=?, email=?, phone=? WHERE id=? AND role='staff'",
-      [name, email.toLowerCase(), phone, id],
+      [name, email.toLowerCase(), formattedPhone, id],
       (err, result) => {
         if (err || result.affectedRows === 0) {
           return res.json({ success: false, message: "Update failed" });
