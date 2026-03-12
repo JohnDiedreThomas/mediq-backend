@@ -114,7 +114,7 @@ router.get("/", async (req, res) => {
       FROM appointments a
       JOIN doctors d ON d.id = a.doctor
       WHERE a.date >= CURDATE() - INTERVAL ? DAY
-      GROUP BY d.name
+      GROUP BY d.id, d.name
       ORDER BY total DESC
       `,
       [days]
@@ -134,16 +134,58 @@ router.get("/", async (req, res) => {
       [days]
     );
 
+    /* 6️⃣.1️⃣ BEST VISIT TIME (least busy hour) */
+const [bestVisit] = await db.promise().query(
+  `
+  SELECT 
+    HOUR(STR_TO_DATE(time,'%h:%i %p')) AS hour,
+    COUNT(*) AS total
+  FROM appointments
+  WHERE date >= CURDATE() - INTERVAL ? DAY
+  GROUP BY hour
+  ORDER BY total ASC
+  LIMIT 1
+  `,
+  [days]
+  );
+  
+  const bestVisitHour =
+  bestVisit.length && bestVisit[0].hour !== null
+    ? new Date(0,0,0,bestVisit[0].hour).toLocaleTimeString([], {hour:'numeric', hour12:true})
+    : null;
+  
+  
+  /* 6️⃣.2️⃣ PEAK CROWD HOUR */
+  const peakCrowdHour = peakHours.length
+    ? new Date(0,0,0,peakHours[0].hour).toLocaleTimeString([], {hour:'numeric', hour12:true})
+    : null;
+  
+  
+  /* 6️⃣.3️⃣ AVERAGE WAIT TIME (estimated) */
+  const avgWaitTime = days === 0
+  ? 0
+  : Math.round(totalAppointments / days);
+  
+  
+  /* 6️⃣.4️⃣ AVERAGE PATIENTS INSIDE */
+  const avgPatientsInside = days === 0 ? 0 : Math.round(totalAppointments / days);
+
+    
+
     /* 7️⃣ MONTHLY TREND (FOR GRAPH) */
-    const [monthlyTrend] = await db.promise().query(`
+    const [monthlyTrend] = await db.promise().query(
+      `
       SELECT 
         DATE_FORMAT(date, '%Y-%m') AS month_key,
         DATE_FORMAT(MIN(date), '%b %Y') AS month,
         COUNT(*) AS total
       FROM appointments
+      WHERE date >= CURDATE() - INTERVAL ? DAY
       GROUP BY DATE_FORMAT(date, '%Y-%m')
       ORDER BY month_key ASC
-    `);
+      `,
+      [days]
+      );
 
     /* 8️⃣ BUSIEST MONTH */
     const busiestMonth =
@@ -155,25 +197,25 @@ router.get("/", async (req, res) => {
 
 
         /* 9️⃣ GENDER DISTRIBUTION */
-const [genderDistribution] = await db.promise().query(
-  `
-  SELECT patient_gender, COUNT(*) AS total
-  FROM appointments
-  WHERE date >= CURDATE() - INTERVAL ? DAY
-  GROUP BY patient_gender
-  `,
-  [days]
-);
+        const [genderDistribution] = await db.promise().query(
+          `
+          SELECT COALESCE(patient_gender,'Unknown') AS patient_gender, COUNT(*) AS total
+          FROM appointments
+          WHERE date >= CURDATE() - INTERVAL ? DAY
+          GROUP BY patient_gender
+          `,
+          [days]
+          );
 /* 🔟 CONNECTION DISTRIBUTION */
 const [connectionDistribution] = await db.promise().query(
   `
-  SELECT connection_to_clinic, COUNT(*) AS total
+  SELECT COALESCE(connection_to_clinic,'Unknown') AS connection_to_clinic, COUNT(*) AS total
   FROM appointments
   WHERE date >= CURDATE() - INTERVAL ? DAY
   GROUP BY connection_to_clinic
   `,
   [days]
-);
+  );
 
 /* 1️⃣1️⃣ MOST USED SERVICES */
 const [serviceDistribution] = await db.promise().query(
@@ -205,7 +247,12 @@ const [serviceDistribution] = await db.promise().query(
         busiestMonth,
         genderDistribution,
         connectionDistribution,
-        serviceDistribution
+        serviceDistribution,
+      
+        bestVisitHour,
+        peakCrowdHour,
+        avgWaitTime,
+        avgPatientsInside
       },
     });
   } catch (error) {
