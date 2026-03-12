@@ -5,6 +5,28 @@ const bcrypt = require("bcryptjs");
 const adminAuth = require("../middleware/adminAuth");
 const upload = require("../middleware/uploadDoctorCloudinary");
 
+function generateStrongPassword() {
+  const upper = "ABCDEFGHIJKLMNOPQRSTUVWXYZ";
+  const lower = "abcdefghijklmnopqrstuvwxyz";
+  const numbers = "0123456789";
+
+  const all = upper + lower + numbers;
+
+  let password =
+    upper[Math.floor(Math.random() * upper.length)] +
+    lower[Math.floor(Math.random() * lower.length)] +
+    numbers[Math.floor(Math.random() * numbers.length)];
+
+  for (let i = 3; i < 8; i++) {
+    password += all[Math.floor(Math.random() * all.length)];
+  }
+
+  return password
+    .split("")
+    .sort(() => 0.5 - Math.random())
+    .join("");
+}
+
 router.use(adminAuth);
 
 /*
@@ -207,7 +229,7 @@ router.post("/:id/reset-password", async (req, res) => {
 
   try {
     // generate temporary password
-    const tempPassword = Math.random().toString(36).slice(-8);
+    const tempPassword = generateStrongPassword();
 
     const hashed = await bcrypt.hash(tempPassword, 10);
 
