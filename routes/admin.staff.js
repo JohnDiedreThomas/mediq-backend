@@ -195,4 +195,47 @@ router.put("/:id", upload.single("image"), (req, res) => {
       }
     );
   });
+
+  /*
+|--------------------------------------------------
+| RESET STAFF PASSWORD
+| POST /api/admin/staff/:id/reset-password
+|--------------------------------------------------
+*/
+router.post("/:id/reset-password", async (req, res) => {
+  const { id } = req.params;
+
+  try {
+    // generate temporary password
+    const tempPassword = Math.random().toString(36).slice(-8);
+
+    const hashed = await bcrypt.hash(tempPassword, 10);
+
+    db.query(
+      "UPDATE users SET password=? WHERE id=? AND role='staff'",
+      [hashed, id],
+      (err, result) => {
+        if (err) {
+          console.error("RESET PASSWORD ERROR:", err);
+          return res.status(500).json({ success: false });
+        }
+
+        if (result.affectedRows === 0) {
+          return res.json({
+            success: false,
+            message: "Staff not found",
+          });
+        }
+
+        res.json({
+          success: true,
+          password: tempPassword, // send temporary password
+        });
+      }
+    );
+  } catch (err) {
+    console.error("RESET PASSWORD ERROR:", err);
+    res.status(500).json({ success: false });
+  }
+});
 module.exports = router;
