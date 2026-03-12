@@ -78,6 +78,7 @@ router.post("/", (req, res) => {
     date,
     time,
     patient_name,
+    patient_birthdate,
     patient_age,
     patient_gender,          
     connection_to_clinic, 
@@ -108,6 +109,7 @@ router.post("/", (req, res) => {
     !date ||
     !time ||
     !patient_name ||
+    !patient_birthdate ||
     !patient_age ||
     !patient_gender ||            
     !connection_to_clinic 
@@ -183,8 +185,8 @@ router.post("/", (req, res) => {
 
         const insertSql = `
           INSERT INTO appointments
-          (user_id, service_id, service, doctor, date, time, patient_name, patient_age, patient_gender, connection_to_clinic, patient_notes, status)
-           VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'pending')
+          (user_id, service_id, service, doctor, date, time, patient_name, patient_birthdate, patient_age, patient_gender, connection_to_clinic, patient_notes, status)
+           VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'pending')
         `;
 
         conn.query(
@@ -197,6 +199,7 @@ router.post("/", (req, res) => {
             date,
             time,
             patient_name,
+            patient_birthdate,
             patient_age,
             patient_gender,
             connection_to_clinic,
@@ -319,6 +322,7 @@ router.put("/:id", (req, res) => {
     date,
     time,
     patient_name,
+    patient_birthdate,
     patient_age,
     patient_gender,         
     connection_to_clinic, 
@@ -437,7 +441,7 @@ router.put("/:id", (req, res) => {
                               conn.query(
                                 `UPDATE appointments
                                  SET service=?, doctor=?, date=?, time=?,
-                                     patient_name=?, patient_age=?,  patient_gender=?, connection_to_clinic=?, 
+                                     patient_name=?, patient_birthdate=?, patient_age=?,  patient_gender=?, connection_to_clinic=?, 
                                      patient_notes=?,
                                      rescheduled=1, reminder_sent=0
                                  WHERE id=?`,
@@ -447,6 +451,7 @@ router.put("/:id", (req, res) => {
                                   date,
                                   time,
                                   patient_name,
+                                  patient_birthdate,
                                   patient_age,
                                   patient_gender,
                                   connection_to_clinic,
