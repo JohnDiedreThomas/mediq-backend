@@ -999,6 +999,7 @@ router.get("/", (req, res) => {
     `
     SELECT 
       a.*,
+       u.name AS account_name,  
       u.phone AS patient_phone,
       d.name AS doctor_name,
       d.specialty AS doctor_specialty
