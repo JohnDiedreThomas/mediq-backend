@@ -141,7 +141,7 @@ router.post("/:doctorId/:date/time", (req, res) => {
 
   db.query(
     sql,
-    [doctorId, date, time, time_value, total_slots],
+    [doctorId, date, time, time, total_slots],
     err => {
       if (err) {
         console.error("❌ ADD SLOT ERROR:", err);
