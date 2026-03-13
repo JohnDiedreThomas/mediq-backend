@@ -237,26 +237,27 @@ const [serviceDistribution] = await db.promise().query(
   [days]
   );
 
-  /* 1️⃣2️⃣ STAFF ACTIVITY (who processed appointments) */
+/* 1️⃣2️⃣ STAFF ACTIVITY */
 const [staffActivity] = await db.promise().query(
   `
-  SELECT staff, COUNT(*) AS total
+  SELECT u.name AS staff, COUNT(*) AS total
   FROM (
-      SELECT approved_by_name AS staff FROM appointments WHERE approved_by_name IS NOT NULL
+      SELECT approved_by AS staff_id FROM appointments WHERE approved_by IS NOT NULL
       UNION ALL
-      SELECT arrived_by_name FROM appointments WHERE arrived_by_name IS NOT NULL
+      SELECT arrived_by FROM appointments WHERE arrived_by IS NOT NULL
       UNION ALL
-      SELECT completed_by_name FROM appointments WHERE completed_by_name IS NOT NULL
+      SELECT completed_by FROM appointments WHERE completed_by IS NOT NULL
       UNION ALL
-      SELECT cancelled_by_name FROM appointments WHERE cancelled_by_name IS NOT NULL
+      SELECT cancelled_by FROM appointments WHERE cancelled_by IS NOT NULL
       UNION ALL
-      SELECT no_show_by_name FROM appointments WHERE no_show_by_name IS NOT NULL
+      SELECT no_show_by FROM appointments WHERE no_show_by IS NOT NULL
   ) actions
-  GROUP BY staff
+  JOIN users u ON u.id = actions.staff_id
+  GROUP BY u.name
   ORDER BY total DESC
   LIMIT 5
   `
-);
+  );
 
     /* RESPONSE */
     res.json({
