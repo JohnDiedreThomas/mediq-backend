@@ -259,7 +259,7 @@ const [staffActivity] = await db.promise().query(
   `
   );
 
-  /* 1️⃣3️⃣ STAFF ACTION BREAKDOWN */
+/* 1️⃣3️⃣ STAFF ACTION BREAKDOWN */
 const [staffActions] = await db.promise().query(
   `
   SELECT 
@@ -273,12 +273,12 @@ const [staffActions] = await db.promise().query(
   
   FROM users u
   LEFT JOIN appointments a
-  ON u.id IN (
-    a.approved_by,
-    a.arrived_by,
-    a.completed_by,
-    a.cancelled_by,
-    a.no_show_by
+  ON (
+    a.approved_by = u.id
+    OR a.arrived_by = u.id
+    OR a.completed_by = u.id
+    OR a.cancelled_by = u.id
+    OR a.no_show_by = u.id
   )
   
   WHERE u.role = 'staff'
