@@ -259,31 +259,35 @@ const [staffActivity] = await db.promise().query(
   `
   );
 
- /* 1️⃣3️⃣ STAFF ACTION BREAKDOWN (FIXED) */
-const [staffActions] = await db.promise().query(`
+  /* 1️⃣3️⃣ STAFF ACTION BREAKDOWN */
+const [staffActions] = await db.promise().query(
+  `
   SELECT 
-  u.name AS staff,
+    u.name AS staff,
   
-  COUNT(a1.approved_by) AS approved,
-  COUNT(a2.arrived_by) AS arrived,
-  COUNT(a3.completed_by) AS completed,
-  COUNT(a4.cancelled_by) AS cancelled,
-  COUNT(a5.no_show_by) AS no_show
+    SUM(CASE WHEN a.approved_by = u.id THEN 1 ELSE 0 END) AS approved,
+    SUM(CASE WHEN a.arrived_by = u.id THEN 1 ELSE 0 END) AS arrived,
+    SUM(CASE WHEN a.completed_by = u.id THEN 1 ELSE 0 END) AS completed,
+    SUM(CASE WHEN a.cancelled_by = u.id THEN 1 ELSE 0 END) AS cancelled,
+    SUM(CASE WHEN a.no_show_by = u.id THEN 1 ELSE 0 END) AS no_show
   
   FROM users u
-  
-  LEFT JOIN appointments a1 ON a1.approved_by = u.id
-  LEFT JOIN appointments a2 ON a2.arrived_by = u.id
-  LEFT JOIN appointments a3 ON a3.completed_by = u.id
-  LEFT JOIN appointments a4 ON a4.cancelled_by = u.id
-  LEFT JOIN appointments a5 ON a5.no_show_by = u.id
+  LEFT JOIN appointments a
+  ON u.id IN (
+    a.approved_by,
+    a.arrived_by,
+    a.completed_by,
+    a.cancelled_by,
+    a.no_show_by
+  )
   
   WHERE u.role = 'staff'
   
   GROUP BY u.id
   ORDER BY completed DESC
   LIMIT 5
-  `);
+  `
+  );
 
     /* RESPONSE */
     res.json({
