@@ -133,18 +133,30 @@ router.post("/:doctorId/:date/time", (req, res) => {
   const { doctorId, date } = req.params;
   let { time, total_slots } = req.body;
 
-  // ✅ Ensure space before AM/PM (fixes "9:15PM" → "9:15 PM")
-  time = time.trim().replace(/(\d)(AM|PM)$/i, "$1 $2");
+  time = time.trim().replace(/\s+/g, " ");
+
+  // convert 12h -> 24h
+  const [timePart, modifier] = time.split(" ");
+  let [hours, minutes] = timePart.split(":").map(Number);
+
+  if (modifier === "PM" && hours !== 12) hours += 12;
+  if (modifier === "AM" && hours === 12) hours = 0;
+
+  const timeValue =
+    hours.toString().padStart(2, "0") +
+    ":" +
+    minutes.toString().padStart(2, "0") +
+    ":00";
 
   const sql = `
     INSERT INTO doctor_time_slots
     (doctor_id, date, time, time_value, total_slots, booked_slots)
-    VALUES (?, ?, ?, STR_TO_DATE(?, '%h:%i %p'), ?, 0)
+    VALUES (?, ?, ?, ?, ?, 0)
   `;
 
   db.query(
     sql,
-    [doctorId, date, time, time, total_slots],
+    [doctorId, date, time, timeValue, total_slots],
     err => {
       if (err) {
         console.error("❌ ADD SLOT ERROR:", err);
