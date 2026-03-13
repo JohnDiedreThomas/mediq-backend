@@ -207,6 +207,7 @@ router.post("/", (req, res) => {
           ],
           (err) => {
             if (err) {
+              console.error("INSERT ERROR:", err);   // ⭐ ADD THIS
               return conn.rollback(() => {
                 conn.release();
                 res.json({ success: false, message: "Insert failed" });
@@ -317,6 +318,7 @@ router.post("/", (req, res) => {
 router.put("/:id", (req, res) => {
   const { id } = req.params;
   const {
+    service_id,
     service,
     doctor,
     date,
@@ -328,6 +330,21 @@ router.put("/:id", (req, res) => {
     connection_to_clinic, 
     patient_notes,
   } = req.body;
+
+  if (
+    !service_id ||
+    !service ||
+    !doctor ||
+    !date ||
+    !time ||
+    !patient_name ||
+    !patient_birthdate ||
+    !patient_age ||
+    !patient_gender ||
+    !connection_to_clinic
+  ) {
+    return res.json({ success: false, message: "Missing fields" });
+  }
 
   const appointmentDateTime = new Date(`${date}T${convertTo24Hour(time)}+08:00`);
   if (appointmentDateTime < new Date()) {
@@ -365,7 +382,7 @@ router.put("/:id", (req, res) => {
 
           conn.query(
             `UPDATE doctor_time_slots
-             SET booked_slots = booked_slots - 1
+             SET booked_slots = GREATEST(booked_slots - 1, 0)
              WHERE doctor_id = ? AND DATE(date) = ? AND time = ? AND booked_slots > 0`,
             [oldAppt.doctor, oldAppt.date, oldAppt.time],
             err => {
@@ -440,12 +457,13 @@ router.put("/:id", (req, res) => {
 
                               conn.query(
                                 `UPDATE appointments
-                                 SET service=?, doctor=?, date=?, time=?,
+                                 SET service_id=?, service=?, doctor=?, date=?, time=?,
                                      patient_name=?, patient_birthdate=?, patient_age=?,  patient_gender=?, connection_to_clinic=?, 
                                      patient_notes=?,
                                      rescheduled=1, reminder_sent=0
                                  WHERE id=?`,
                                 [
+                                  service_id,
                                   service,
                                   doctor,
                                   date,
