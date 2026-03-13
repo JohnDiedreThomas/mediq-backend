@@ -259,35 +259,23 @@ const [staffActivity] = await db.promise().query(
   `
   );
 
-/* 1️⃣3️⃣ STAFF ACTION BREAKDOWN */
-const [staffActions] = await db.promise().query(
-  `
+/* 1️⃣3️⃣ STAFF ACTION BREAKDOWN (FIXED TOTAL) */
+const [staffActions] = await db.promise().query(`
   SELECT 
     u.name AS staff,
   
-    SUM(CASE WHEN a.approved_by = u.id THEN 1 ELSE 0 END) AS approved,
-    SUM(CASE WHEN a.arrived_by = u.id THEN 1 ELSE 0 END) AS arrived,
-    SUM(CASE WHEN a.completed_by = u.id THEN 1 ELSE 0 END) AS completed,
-    SUM(CASE WHEN a.cancelled_by = u.id THEN 1 ELSE 0 END) AS cancelled,
-    SUM(CASE WHEN a.no_show_by = u.id THEN 1 ELSE 0 END) AS no_show
+    (SELECT COUNT(*) FROM appointments WHERE approved_by = u.id) AS approved,
+    (SELECT COUNT(*) FROM appointments WHERE arrived_by = u.id) AS arrived,
+    (SELECT COUNT(*) FROM appointments WHERE completed_by = u.id) AS completed,
+    (SELECT COUNT(*) FROM appointments WHERE cancelled_by = u.id) AS cancelled,
+    (SELECT COUNT(*) FROM appointments WHERE no_show_by = u.id) AS no_show
   
   FROM users u
-  LEFT JOIN appointments a
-  ON (
-    a.approved_by = u.id
-    OR a.arrived_by = u.id
-    OR a.completed_by = u.id
-    OR a.cancelled_by = u.id
-    OR a.no_show_by = u.id
-  )
-  
   WHERE u.role = 'staff'
   
-  GROUP BY u.id
   ORDER BY completed DESC
   LIMIT 5
-  `
-  );
+  `);
 
     /* RESPONSE */
     res.json({
