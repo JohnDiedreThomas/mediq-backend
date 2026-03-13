@@ -64,15 +64,19 @@ router.get("/:doctorId/availability/:date", (req, res) => {
   const { doctorId, date } = req.params;
 
   const sql = `
-    SELECT 
-      time,
-      total_slots,
-      booked_slots,
-      (total_slots - booked_slots) AS remaining
-    FROM doctor_time_slots
-    WHERE doctor_id = ?
-      AND DATE(date) = ?
-    ORDER BY time_value ASC
+   SELECT 
+  time,
+  total_slots,
+  booked_slots,
+  (total_slots - booked_slots) AS remaining
+FROM doctor_time_slots
+WHERE doctor_id = ?
+  AND DATE(date) = ?
+  AND (
+    DATE(date) > CURDATE()
+    OR (DATE(date) = CURDATE() AND time_value > CURTIME())
+  )
+ORDER BY time_value ASC
   `;
 
   db.query(sql, [doctorId, date], (err, rows) => {
