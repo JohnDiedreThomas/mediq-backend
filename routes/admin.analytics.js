@@ -259,6 +259,36 @@ const [staffActivity] = await db.promise().query(
   `
   );
 
+  /* 1️⃣3️⃣ STAFF ACTION BREAKDOWN */
+const [staffActions] = await db.promise().query(
+  `
+  SELECT 
+    u.name AS staff,
+  
+    SUM(CASE WHEN a.approved_by = u.id THEN 1 ELSE 0 END) AS approved,
+    SUM(CASE WHEN a.arrived_by = u.id THEN 1 ELSE 0 END) AS arrived,
+    SUM(CASE WHEN a.completed_by = u.id THEN 1 ELSE 0 END) AS completed,
+    SUM(CASE WHEN a.cancelled_by = u.id THEN 1 ELSE 0 END) AS cancelled,
+    SUM(CASE WHEN a.no_show_by = u.id THEN 1 ELSE 0 END) AS no_show
+  
+  FROM users u
+  LEFT JOIN appointments a
+  ON u.id IN (
+    a.approved_by,
+    a.arrived_by,
+    a.completed_by,
+    a.cancelled_by,
+    a.no_show_by
+  )
+  
+  WHERE u.role = 'staff'
+  
+  GROUP BY u.id
+  ORDER BY completed DESC
+  LIMIT 5
+  `
+  );
+
     /* RESPONSE */
     res.json({
       success: true,
@@ -278,6 +308,7 @@ const [staffActivity] = await db.promise().query(
         connectionDistribution,
         serviceDistribution,
         staffActivity,
+        staffActions,
       
         bestVisitHour,
         peakCrowdHour,
