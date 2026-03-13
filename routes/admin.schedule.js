@@ -131,12 +131,12 @@ router.put("/:doctorId/:date/slots", (req, res) => {
 ===================================================== */
 router.post("/:doctorId/:date/time", (req, res) => {
   const { doctorId, date } = req.params;
-  const { time, time_value, total_slots } = req.body;
+  const { time, total_slots } = req.body;
 
   const sql = `
     INSERT INTO doctor_time_slots
     (doctor_id, date, time, time_value, total_slots, booked_slots)
-    VALUES (?, ?, ?, ?, ?, 0)
+    VALUES (?, ?, ?, STR_TO_DATE(?, '%h:%i %p'), ?, 0)
   `;
 
   db.query(
