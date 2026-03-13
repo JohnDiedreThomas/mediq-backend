@@ -231,6 +231,27 @@ const [serviceDistribution] = await db.promise().query(
   [days]
   );
 
+  /* 1️⃣2️⃣ STAFF ACTIVITY (who processed appointments) */
+const [staffActivity] = await db.promise().query(
+  `
+  SELECT staff, COUNT(*) AS total
+  FROM (
+      SELECT approved_by_name AS staff FROM appointments WHERE approved_by_name IS NOT NULL
+      UNION ALL
+      SELECT arrived_by_name FROM appointments WHERE arrived_by_name IS NOT NULL
+      UNION ALL
+      SELECT completed_by_name FROM appointments WHERE completed_by_name IS NOT NULL
+      UNION ALL
+      SELECT cancelled_by_name FROM appointments WHERE cancelled_by_name IS NOT NULL
+      UNION ALL
+      SELECT no_show_by_name FROM appointments WHERE no_show_by_name IS NOT NULL
+  ) actions
+  GROUP BY staff
+  ORDER BY total DESC
+  LIMIT 5
+  `
+);
+
     /* RESPONSE */
     res.json({
       success: true,
@@ -239,6 +260,7 @@ const [serviceDistribution] = await db.promise().query(
         statusCounts,
         noShowRate: Number(noShowRate.toFixed(1)),
         rescheduleRate: Number(rescheduleRate.toFixed(1)),
+        completionRate: Number(completionRate.toFixed(1)),
         rescheduledCount,
         trend,
         doctorWorkload,
@@ -248,6 +270,7 @@ const [serviceDistribution] = await db.promise().query(
         genderDistribution,
         connectionDistribution,
         serviceDistribution,
+        staffActivity,
       
         bestVisitHour,
         peakCrowdHour,
