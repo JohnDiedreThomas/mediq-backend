@@ -72,6 +72,12 @@ router.get("/", async (req, res) => {
     const noShow =
       statusCounts.find((s) => s.status === "no_show")?.total || 0;
 
+      /* COMPLETION RATE */
+const completionRate =
+totalAppointments === 0
+  ? 0
+  : (completed / totalAppointments) * 100;
+
     const noShowRate =
       totalAppointments === 0
         ? 0
