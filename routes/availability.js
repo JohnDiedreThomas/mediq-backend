@@ -29,8 +29,8 @@ FROM (
 
         -- ignore past times today
        WHEN DATE(date) = DATE(CONVERT_TZ(NOW(), '+00:00', '+08:00'))
-     AND time_value <= TIME(CONVERT_TZ(NOW(), '+00:00', '+08:00'))
-        THEN 0
+AND time_value < TIME(CONVERT_TZ(NOW(), '+00:00', '+08:00'))
+THEN 0
 
         -- count valid future slots
         ELSE (total_slots - booked_slots)
