@@ -73,9 +73,12 @@ router.get("/:doctorId/availability/:date", (req, res) => {
   WHERE doctor_id = ?
     AND DATE(date) = ?
     AND (
-      DATE(date) > CURDATE()
-      OR (DATE(date) = CURDATE() AND time_value > CURTIME())
-    )
+  DATE(date) > DATE(CONVERT_TZ(NOW(), '+00:00', '+08:00'))
+  OR (
+    DATE(date) = DATE(CONVERT_TZ(NOW(), '+00:00', '+08:00'))
+    AND time_value > TIME(CONVERT_TZ(NOW(), '+00:00', '+08:00'))
+  )
+)
   ORDER BY time_value ASC
   `;
 

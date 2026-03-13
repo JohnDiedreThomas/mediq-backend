@@ -131,7 +131,10 @@ router.put("/:doctorId/:date/slots", (req, res) => {
 ===================================================== */
 router.post("/:doctorId/:date/time", (req, res) => {
   const { doctorId, date } = req.params;
-  const { time, total_slots } = req.body;
+  let { time, total_slots } = req.body;
+
+  // ✅ Ensure space before AM/PM (fixes "9:15PM" → "9:15 PM")
+  time = time.trim().replace(/(\d)(AM|PM)$/i, "$1 $2");
 
   const sql = `
     INSERT INTO doctor_time_slots
