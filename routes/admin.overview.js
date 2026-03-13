@@ -25,6 +25,7 @@ router.get("/", (req, res) => {
           a.time,
           a.status,
           a.patient_name,
+            a.patient_birthdate,
           a.patient_age,
           a.patient_gender,
           a.connection_to_clinic,
