@@ -1119,6 +1119,7 @@ router.put("/:id/status", (req, res) => {
 router.put("/:id/staff-reschedule", (req, res) => {
   const { id } = req.params;
   const { doctor, date, time } = req.body;
+  const staffId = req.headers["x-user-id"];
 
   if (!doctor || !date || !time) {
     return res.json({ success: false, message: "Missing fields" });
@@ -1223,9 +1224,9 @@ router.put("/:id/staff-reschedule", (req, res) => {
 
                               conn.query(
                                 `UPDATE appointments
-                                 SET doctor=?, date=?, time=?, rescheduled=1, reminder_sent=0
+                                 SET doctor=?, date=?, time=?, rescheduled=1, rescheduled_by=?, reminder_sent=0
                                  WHERE id=?`,
-                                [doctor, date, time, id],
+                                 [doctor, date, time, staffId, id],
                                 err => {
                                   if (err) {
                                     return conn.rollback(() => {
