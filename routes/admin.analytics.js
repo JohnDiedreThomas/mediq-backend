@@ -299,15 +299,16 @@ const [staffActions] = await db.promise().query(`
 
 /* MOST POSITIVELY REVIEWED DOCTOR */
 const [mostReviewedDoctorResult] = await db.promise().query(`
-  SELECT 
+SELECT 
 d.id,
 d.name,
+d.specialty,
 COUNT(r.id) AS total_reviews,
 ROUND(AVG(r.rating),1) AS avg_rating
 FROM doctors d
 LEFT JOIN doctor_reviews r ON r.doctor_id = d.id
 WHERE d.is_active = 1
-GROUP BY d.id
+GROUP BY d.id, d.name, d.specialty
 HAVING total_reviews > 0
 ORDER BY avg_rating DESC, total_reviews DESC
 LIMIT 1
@@ -324,12 +325,13 @@ LIMIT 1
   SELECT 
 d.id,
 d.name,
+d.specialty,
 COUNT(r.id) AS total_reviews,
 ROUND(AVG(r.rating),1) AS avg_rating
 FROM doctors d
 LEFT JOIN doctor_reviews r ON r.doctor_id = d.id
 WHERE d.is_active = 1
-GROUP BY d.id
+GROUP BY d.id, d.name, d.specialty
 ORDER BY total_reviews ASC
 LIMIT 1
   `);
@@ -338,6 +340,94 @@ LIMIT 1
   leastReviewedDoctorResult.length > 0
   ? leastReviewedDoctorResult[0]
   : null;
+
+
+  /* 1️⃣5️⃣ TOP RATED DOCTORS (LEADERBOARD) */
+
+const [topRatedDoctors] = await db.promise().query(`
+  SELECT 
+  d.id,
+  d.name,
+  d.specialty,
+  COUNT(r.id) AS total_reviews,
+  ROUND(AVG(r.rating),1) AS avg_rating
+  FROM doctors d
+  LEFT JOIN doctor_reviews r ON r.doctor_id = d.id
+  WHERE d.is_active = 1
+  GROUP BY d.id, d.name, d.specialty
+  HAVING total_reviews >= 3
+  ORDER BY avg_rating DESC, total_reviews DESC
+  LIMIT 5
+  `);
+
+
+  /* 1️⃣6️⃣ STAFF PRODUCTIVITY RANKING */
+
+const [staffProductivity] = await db.promise().query(`
+  SELECT 
+  u.id,
+  u.name,
+  
+  (
+    (SELECT COUNT(*) FROM appointments WHERE approved_by = u.id) +
+    (SELECT COUNT(*) FROM appointments WHERE arrived_by = u.id) +
+    (SELECT COUNT(*) FROM appointments WHERE completed_by = u.id) +
+    (SELECT COUNT(*) FROM appointments WHERE cancelled_by = u.id) +
+    (SELECT COUNT(*) FROM appointments WHERE no_show_by = u.id) +
+    (SELECT COUNT(*) FROM appointments WHERE rescheduled_by = u.id)
+  ) AS total_actions
+  
+  FROM users u
+  WHERE u.role = 'staff'
+  ORDER BY total_actions DESC
+  LIMIT 5
+  `);
+
+  /* 1️⃣7️⃣ STAFF EFFICIENCY SCORE */
+
+const [staffEfficiency] = await db.promise().query(`
+  SELECT 
+  u.id,
+  u.name,
+  
+  (
+   (SELECT COUNT(*) FROM appointments WHERE completed_by = u.id) * 3 +
+   (SELECT COUNT(*) FROM appointments WHERE approved_by = u.id) * 2 +
+   (SELECT COUNT(*) FROM appointments WHERE arrived_by = u.id) * 1 +
+   (SELECT COUNT(*) FROM appointments WHERE rescheduled_by = u.id) * 1 -
+   (SELECT COUNT(*) FROM appointments WHERE cancelled_by = u.id) * 1 -
+   (SELECT COUNT(*) FROM appointments WHERE no_show_by = u.id) * 2
+  ) AS efficiency_score
+  
+  FROM users u
+  WHERE u.role='staff'
+  ORDER BY efficiency_score DESC
+  LIMIT 5
+  `);
+
+  /* 1️⃣8️⃣ MOST RELIABLE STAFF */
+
+const [staffReliability] = await db.promise().query(`
+  SELECT
+  u.id,
+  u.name,
+  
+  (SELECT COUNT(*) FROM appointments WHERE completed_by = u.id) AS completed,
+  
+  (
+   (SELECT COUNT(*) FROM appointments WHERE completed_by = u.id) /
+   NULLIF(
+    (SELECT COUNT(*) FROM appointments WHERE completed_by = u.id) +
+    (SELECT COUNT(*) FROM appointments WHERE cancelled_by = u.id) +
+    (SELECT COUNT(*) FROM appointments WHERE no_show_by = u.id),
+  0)
+  ) * 100 AS reliability_rate
+  
+  FROM users u
+  WHERE u.role='staff'
+  ORDER BY reliability_rate DESC
+  LIMIT 5
+  `);
 
     /* RESPONSE */
     res.json({
@@ -359,13 +449,18 @@ LIMIT 1
         serviceDistribution,
         staffActivity,
         staffActions,
+
+        staffProductivity,
+        staffEfficiency,
+        staffReliability,
       
         bestVisitHour,
         peakCrowdHour,
         avgWaitTime,
         avgPatientsInside,
         mostReviewedDoctor,
-leastReviewedDoctor
+leastReviewedDoctor,
+topRatedDoctors
       },
     });
   } catch (error) {
