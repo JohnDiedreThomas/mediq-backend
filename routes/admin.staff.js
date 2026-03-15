@@ -291,12 +291,13 @@ router.get("/:id/actions", async (req, res) => {
         (SELECT COUNT(*) FROM appointments WHERE arrived_by = ?) AS arrived,
         (SELECT COUNT(*) FROM appointments WHERE completed_by = ?) AS completed,
         (SELECT COUNT(*) FROM appointments WHERE cancelled_by = ?) AS cancelled,
-        (SELECT COUNT(*) FROM appointments WHERE no_show_by = ?) AS no_show
+        (SELECT COUNT(*) FROM appointments WHERE no_show_by = ?) AS no_show,
+        (SELECT COUNT(*) FROM appointments WHERE rescheduled_by = ?) AS rescheduled
 
       FROM users u
       WHERE u.id = ?
       LIMIT 1
-    `,[id,id,id,id,id,id]);
+    `,[id,id,id,id,id,id,id]);
 
     res.json({
       success: true,
