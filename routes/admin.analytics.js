@@ -305,6 +305,7 @@ const [mostReviewedDoctorResult] = await db.promise().query(`
   COUNT(r.id) AS total_reviews,
   ROUND(AVG(r.rating),1) AS avg_rating
   FROM doctors d
+WHERE d.is_active = 1
   LEFT JOIN doctor_reviews r ON r.doctor_id = d.id
   GROUP BY d.id
   HAVING total_reviews > 0
@@ -325,7 +326,8 @@ const [mostReviewedDoctorResult] = await db.promise().query(`
   d.name,
   COUNT(r.id) AS total_reviews,
   ROUND(AVG(r.rating),1) AS avg_rating
-  FROM doctors d
+ FROM doctors d
+WHERE d.is_active = 1
   LEFT JOIN doctor_reviews r ON r.doctor_id = d.id
   GROUP BY d.id
   ORDER BY total_reviews ASC
