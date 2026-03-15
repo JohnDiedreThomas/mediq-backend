@@ -294,6 +294,49 @@ const [staffActions] = await db.promise().query(`
   LIMIT 5
   `);
 
+
+  /* 1️⃣4️⃣ DOCTOR REVIEW INSIGHTS */
+
+/* MOST POSITIVELY REVIEWED DOCTOR */
+const [mostReviewedDoctorResult] = await db.promise().query(`
+  SELECT 
+  d.id,
+  d.name,
+  COUNT(r.id) AS total_reviews,
+  ROUND(AVG(r.rating),1) AS avg_rating
+  FROM doctors d
+  LEFT JOIN doctor_reviews r ON r.doctor_id = d.id
+  GROUP BY d.id
+  HAVING total_reviews > 0
+  ORDER BY avg_rating DESC, total_reviews DESC
+  LIMIT 1
+  `);
+  
+  const mostReviewedDoctor =
+  mostReviewedDoctorResult.length > 0
+  ? mostReviewedDoctorResult[0]
+  : null;
+  
+  
+  /* LEAST REVIEWED DOCTOR */
+  const [leastReviewedDoctorResult] = await db.promise().query(`
+  SELECT 
+  d.id,
+  d.name,
+  COUNT(r.id) AS total_reviews,
+  ROUND(AVG(r.rating),1) AS avg_rating
+  FROM doctors d
+  LEFT JOIN doctor_reviews r ON r.doctor_id = d.id
+  GROUP BY d.id
+  ORDER BY total_reviews ASC
+  LIMIT 1
+  `);
+  
+  const leastReviewedDoctor =
+  leastReviewedDoctorResult.length > 0
+  ? leastReviewedDoctorResult[0]
+  : null;
+
     /* RESPONSE */
     res.json({
       success: true,
@@ -318,7 +361,9 @@ const [staffActions] = await db.promise().query(`
         bestVisitHour,
         peakCrowdHour,
         avgWaitTime,
-        avgPatientsInside
+        avgPatientsInside,
+        mostReviewedDoctor,
+leastReviewedDoctor
       },
     });
   } catch (error) {
