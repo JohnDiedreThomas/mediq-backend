@@ -290,6 +290,15 @@ router.post("/", (req, res) => {
                               `Your appointment for ${service} on ${formatPH(date, time)} is pending approval`
                             );
                           }
+                          // ✅ SAVE IN APP NOTIFICATION
+db.query(
+  `INSERT INTO notifications (user_id,title,message,is_read)
+   VALUES (?, ?, ?, 0)`,
+  [
+  user_id,
+  "Appointment Requested",
+  `Your appointment for ${service} on ${formatPH(date,time)} is pending approval`
+  ]);
                         }
                       );
                       
@@ -835,7 +844,7 @@ router.put("/:id/approve", (req, res) => {
 
               console.log("⏱ Instant diff:", diffMinutes);
 
-              if (diffMinutes >= -10 && diffMinutes <= 60 && appt.push_token) {
+              if (diffMinutes >= 0 && diffMinutes <= 60 && appt.push_token) {
                 const message = `Reminder: You have an appointment for ${appt.service} with ${appt.doctor_name} at ${formatPH(appt.date, appt.time)}`;
 
                 await sendPushNotification(
@@ -843,6 +852,16 @@ router.put("/:id/approve", (req, res) => {
                   "🔔 Mediq Reminder",
                   message
                 );
+
+                // ✅ SAVE REMINDER IN APP
+db.query(
+  `INSERT INTO notifications (user_id,title,message,is_read)
+   VALUES (?, ?, ?, 0)`,
+  [
+  appt.user_id,
+  "Appointment Reminder",
+  message
+  ]);
 
                 console.log("⚡ Instant reminder sent:", id);
               }
@@ -1096,13 +1115,28 @@ router.put("/:id/status", (req, res) => {
          WHERE a.id = ?`,
         [id],
         async (err, rows) => {
-          if (!err && rows.length > 0 && rows[0].push_token) {
+
+          if (err || rows.length === 0) {
+            return res.json({ success: false });
+          }
+        
+          if (rows[0].push_token) {
             await sendPushNotification(
               rows[0].push_token,
               "Appointment Status Update",
               `Your appointment status is now ${status.replace("_", " ")}`
             );
           }
+        
+          db.query(
+            `INSERT INTO notifications (user_id,title,message,is_read)
+             VALUES (?, ?, ?, 0)`,
+            [
+              rows[0].user_id,
+              "Appointment Status Update",
+              `Your appointment status is now ${status.replace("_"," ")}`
+            ]
+          );
         }
       );
 
@@ -1272,6 +1306,9 @@ router.put("/:id/staff-reschedule", (req, res) => {
                                             `Clinic moved your appointment to ${formatPH(date, time)}`
                                           );
                                         }
+                                       
+
+                                        
                                       }
                                     );
 
