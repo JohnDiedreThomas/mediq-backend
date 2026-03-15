@@ -300,17 +300,17 @@ const [staffActions] = await db.promise().query(`
 /* MOST POSITIVELY REVIEWED DOCTOR */
 const [mostReviewedDoctorResult] = await db.promise().query(`
   SELECT 
-  d.id,
-  d.name,
-  COUNT(r.id) AS total_reviews,
-  ROUND(AVG(r.rating),1) AS avg_rating
-  FROM doctors d
+d.id,
+d.name,
+COUNT(r.id) AS total_reviews,
+ROUND(AVG(r.rating),1) AS avg_rating
+FROM doctors d
+LEFT JOIN doctor_reviews r ON r.doctor_id = d.id
 WHERE d.is_active = 1
-  LEFT JOIN doctor_reviews r ON r.doctor_id = d.id
-  GROUP BY d.id
-  HAVING total_reviews > 0
-  ORDER BY avg_rating DESC, total_reviews DESC
-  LIMIT 1
+GROUP BY d.id
+HAVING total_reviews > 0
+ORDER BY avg_rating DESC, total_reviews DESC
+LIMIT 1
   `);
   
   const mostReviewedDoctor =
@@ -322,16 +322,16 @@ WHERE d.is_active = 1
   /* LEAST REVIEWED DOCTOR */
   const [leastReviewedDoctorResult] = await db.promise().query(`
   SELECT 
-  d.id,
-  d.name,
-  COUNT(r.id) AS total_reviews,
-  ROUND(AVG(r.rating),1) AS avg_rating
- FROM doctors d
+d.id,
+d.name,
+COUNT(r.id) AS total_reviews,
+ROUND(AVG(r.rating),1) AS avg_rating
+FROM doctors d
+LEFT JOIN doctor_reviews r ON r.doctor_id = d.id
 WHERE d.is_active = 1
-  LEFT JOIN doctor_reviews r ON r.doctor_id = d.id
-  GROUP BY d.id
-  ORDER BY total_reviews ASC
-  LIMIT 1
+GROUP BY d.id
+ORDER BY total_reviews ASC
+LIMIT 1
   `);
   
   const leastReviewedDoctor =
