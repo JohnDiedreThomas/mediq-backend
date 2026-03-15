@@ -282,7 +282,8 @@ const [staffActions] = await db.promise().query(`
     (SELECT COUNT(*) FROM appointments WHERE arrived_by = u.id) AS arrived,
     (SELECT COUNT(*) FROM appointments WHERE completed_by = u.id) AS completed,
     (SELECT COUNT(*) FROM appointments WHERE cancelled_by = u.id) AS cancelled,
-    (SELECT COUNT(*) FROM appointments WHERE no_show_by = u.id) AS no_show
+    (SELECT COUNT(*) FROM appointments WHERE no_show_by = u.id) AS no_show,
+     (SELECT COUNT(*) FROM appointments WHERE rescheduled_by = u.id) AS rescheduled
   
   FROM users u
   WHERE u.role = 'staff'
