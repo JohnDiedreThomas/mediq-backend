@@ -194,4 +194,63 @@ router.put("/:id/status", (req, res) => {
   );
 });
 
+/*
+|--------------------------------------------------
+| GET DOCTOR REVIEWS (ADMIN ANALYTICS)
+| GET /api/admin/doctors/:id/reviews
+|--------------------------------------------------
+*/
+router.get("/:id/reviews", (req, res) => {
+
+  const doctorId = req.params.id;
+
+  const sql = `
+    SELECT 
+      r.id,
+      r.rating,
+      r.comment,
+      r.created_at,
+      IFNULL(u.name, 'Patient') AS patient_name
+    FROM doctor_reviews r
+    LEFT JOIN users u ON r.user_id = u.id
+    WHERE r.doctor_id = ?
+    ORDER BY r.created_at DESC
+  `;
+
+  db.query(sql, [doctorId], (err, reviews) => {
+
+    if (err) {
+      console.error("❌ DOCTOR REVIEWS ERROR:", err);
+      return res.status(500).json({ success:false });
+    }
+
+    /* ---------- CALCULATE ANALYTICS ---------- */
+
+    const total = reviews.length;
+
+    const average =
+      total === 0
+        ? 0
+        : reviews.reduce((sum,r)=>sum + r.rating,0) / total;
+
+    const distribution = {
+      5: reviews.filter(r=>r.rating===5).length,
+      4: reviews.filter(r=>r.rating===4).length,
+      3: reviews.filter(r=>r.rating===3).length,
+      2: reviews.filter(r=>r.rating===2).length,
+      1: reviews.filter(r=>r.rating===1).length
+    };
+
+    res.json({
+      success:true,
+      total_reviews: total,
+      average_rating: Number(average.toFixed(1)),
+      distribution,
+      reviews
+    });
+
+  });
+
+});
+
 module.exports = router;
