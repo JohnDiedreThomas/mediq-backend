@@ -129,13 +129,14 @@ totalAppointments === 0
     /* 6️⃣ PEAK HOURS */
     const [peakHours] = await db.promise().query(
       `
-      SELECT 
-        HOUR(STR_TO_DATE(time, '%h:%i %p')) AS hour,
-        COUNT(*) AS total
-      FROM appointments
-      WHERE date >= CURDATE() - INTERVAL ? DAY
-      GROUP BY hour
-      ORDER BY total DESC
+     SELECT 
+HOUR(arrived_at) AS hour,
+COUNT(*) AS total
+FROM appointments
+WHERE arrived_at IS NOT NULL
+AND date >= CURDATE() - INTERVAL ? DAY
+GROUP BY hour
+ORDER BY total DESC
       `,
       [days]
     );
@@ -144,13 +145,14 @@ totalAppointments === 0
 const [bestVisit] = await db.promise().query(
   `
   SELECT 
-    HOUR(STR_TO_DATE(time,'%h:%i %p')) AS hour,
-    COUNT(*) AS total
-  FROM appointments
-  WHERE date >= CURDATE() - INTERVAL ? DAY
-  GROUP BY hour
-  ORDER BY total ASC
-  LIMIT 1
+HOUR(arrived_at) AS hour,
+COUNT(*) AS total
+FROM appointments
+WHERE arrived_at IS NOT NULL
+AND date >= CURDATE() - INTERVAL ? DAY
+GROUP BY hour
+ORDER BY total ASC
+LIMIT 1
   `,
   [days]
   );
@@ -167,15 +169,27 @@ const [bestVisit] = await db.promise().query(
     : null;
   
   
-  /* 6️⃣.3️⃣ AVERAGE WAIT TIME (estimated) */
-  const avgWaitTime = days === 0
-  ? 0
-  : Math.round(totalAppointments / days);
+ /* 6️⃣.3️⃣ REAL AVERAGE WAIT TIME (FROM ARRIVAL SYSTEM) */
+const [waitResult] = await db.promise().query(`
+  SELECT AVG(TIMESTAMPDIFF(MINUTE, arrived_at, NOW())) AS avgWait
+  FROM appointments
+  WHERE arrived = 1
+  AND arrived_at IS NOT NULL
+  AND DATE(date) = CURDATE()
+  `);
+  
+  const avgWaitTime = Math.round(waitResult[0].avgWait || 0);
   
   
-  /* 6️⃣.4️⃣ AVERAGE PATIENTS INSIDE */
-  const avgPatientsInside = days === 0 ? 0 : Math.round(totalAppointments / days);
-
+  /* 6️⃣.4️⃣ REAL PATIENTS INSIDE (FROM ARRIVAL SYSTEM) */
+  const [insideResult] = await db.promise().query(`
+  SELECT COUNT(*) AS insideCount
+  FROM appointments
+  WHERE arrived = 1
+  AND DATE(date) = CURDATE()
+  `);
+  
+  const avgPatientsInside = insideResult[0].insideCount || 0;
     
 
     /* 7️⃣ MONTHLY TREND (FOR GRAPH) */
