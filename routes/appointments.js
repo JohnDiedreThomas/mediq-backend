@@ -1,7 +1,7 @@
 const express = require("express");
 const db = require("../db");
 const { sendPushNotification } = require("../pushNotification");
-async function sendPushIfAllowed(userId, title, message) {
+function sendPushIfAllowed(userId, title, message) {
 
   db.query(
     "SELECT push_token, mute_notifications FROM users WHERE id = ?",
@@ -12,16 +12,14 @@ async function sendPushIfAllowed(userId, title, message) {
 
       const user = rows[0];
 
-      // ❌ STOP if muted
       if (user.mute_notifications) return;
 
-      // ✅ Send push if allowed
       if (user.push_token) {
-        await sendPushNotification(
-          user.push_token,
-          title,
-          message
-        );
+        try {
+          await sendPushNotification(user.push_token, title, message);
+        } catch (e) {
+          console.log("Push error:", e);
+        }
       }
 
     }
@@ -531,7 +529,7 @@ router.put("/:id", (req, res) => {
                                        VALUES (?,?)`,
                                       [
                                         "Patient Rescheduled 🔄",
-                                        `Appointment ID ${id} moved to ${date} ${time}`,
+                                        `${patient_name} rescheduled appointment to ${formatPH(date,time)}`,
                                       ]
                                     );
                                   
@@ -723,7 +721,7 @@ router.put("/:id/cancel", (req, res) => {
                                VALUES (?, ?)`,
                                [
                                 "Appointment Cancelled ❌",
-                                `Appointment ID ${id} was cancelled`
+                                `${appt.patient_name} cancelled their appointment`
                               ]
                             );
                             // 🔔 PUSH NOTIFICATION TO STAFF
@@ -1335,7 +1333,7 @@ router.put("/:id/staff-reschedule", (req, res) => {
                                        VALUES (?,?)`,
                                       [
                                         "Staff Rescheduled 🔄",
-                                        `Appointment ${id} moved to ${date} ${time}`,
+                                        `Clinic moved ${old.patient_name}'s appointment to ${formatPH(date,time)}`,
                                       ]
                                     );
 
