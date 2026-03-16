@@ -24,6 +24,7 @@ router.get("/", (req, res) => {
           a.date,
           a.time,
           a.status,
+           a.rescheduled,
           a.patient_name,
             a.patient_birthdate,
           a.patient_age,
