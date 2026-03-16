@@ -141,6 +141,27 @@ ORDER BY total DESC
       [days]
     );
 
+    /* 6️⃣.0️⃣ BEST APPOINTMENT TIME (least booked schedule hour) */
+const [bestAppointment] = await db.promise().query(
+  `
+  SELECT 
+  HOUR(time) AS hour,
+  COUNT(*) AS total
+  FROM appointments
+  WHERE date >= CURDATE() - INTERVAL ? DAY
+  GROUP BY hour
+  ORDER BY total ASC
+  LIMIT 1
+  `,
+  [days]
+  );
+  
+  const bestAppointmentHour =
+  bestAppointment.length && bestAppointment[0].hour !== null
+    ? new Date(0,0,0,bestAppointment[0].hour)
+        .toLocaleTimeString([], { hour: 'numeric', hour12: true })
+    : null;
+
     /* 6️⃣.1️⃣ BEST VISIT TIME (least busy hour) */
 const [bestVisit] = await db.promise().query(
   `
@@ -453,7 +474,8 @@ const [staffReliability] = await db.promise().query(`
         staffProductivity,
         staffEfficiency,
         staffReliability,
-      
+        
+        bestAppointmentHour,
         bestVisitHour,
         peakCrowdHour,
         avgWaitTime,
