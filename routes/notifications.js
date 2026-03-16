@@ -120,6 +120,48 @@ router.get("/:userId", (req, res) => {
 
     }
   );
+});
+
+/* GET MUTE STATUS */
+router.get("/mute/:userId", (req, res) => {
+
+  const { userId } = req.params;
+
+  db.query(
+    "SELECT mute_notifications FROM users WHERE id = ?",
+    [userId],
+    (err, rows) => {
+
+      if (err || rows.length === 0) {
+        return res.json({ success: false });
+      }
+
+      res.json({
+        success: true,
+        mute: rows[0].mute_notifications
+      });
+
+    }
+  );
+
+});
+
+router.put("/mute/:userId",(req,res)=>{
+
+  const { userId } = req.params;
+  const { mute } = req.body;
+
+  db.query(
+    "UPDATE users SET mute_notifications=? WHERE id=?",
+    [mute,userId],
+    err => {
+
+      if(err) return res.json({success:false});
+
+      res.json({success:true});
+
+    }
+  );
 
 });
 

@@ -1,6 +1,33 @@
 const express = require("express");
 const db = require("../db");
 const { sendPushNotification } = require("../pushNotification");
+async function sendPushIfAllowed(userId, title, message) {
+
+  db.query(
+    "SELECT push_token, mute_notifications FROM users WHERE id = ?",
+    [userId],
+    async (err, rows) => {
+
+      if (err || rows.length === 0) return;
+
+      const user = rows[0];
+
+      // ❌ STOP if muted
+      if (user.mute_notifications) return;
+
+      // ✅ Send push if allowed
+      if (user.push_token) {
+        await sendPushNotification(
+          user.push_token,
+          title,
+          message
+        );
+      }
+
+    }
+  );
+
+}
 
 const router = express.Router();
 function convertTo24Hour(timeStr) {
@@ -284,8 +311,8 @@ router.post("/", (req, res) => {
                         [user_id],
                         async (err, rows) => {
                           if (!err && rows.length > 0 && rows[0].push_token) {
-                            await sendPushNotification(
-                              rows[0].push_token,
+                            await sendPushIfAllowed(
+                              user_id,
                               "Appointment Requested 📅",
                               `Your appointment for ${service} on ${formatPH(date, time)} is pending approval`
                             );
@@ -668,8 +695,8 @@ router.put("/:id/cancel", (req, res) => {
                             const pushToken = userRows[0].push_token;
 
                             if (pushToken) {
-                              await sendPushNotification(
-                                pushToken,
+                              await sendPushIfAllowed(
+                                appt.user_id,
                                 "Appointment Cancelled ❌",
                                 "Your appointment has been cancelled. Contact the clinic for more info"
                               );
@@ -828,8 +855,8 @@ router.put("/:id/approve", (req, res) => {
 
               // approval push
               if (appt.push_token) {
-                await sendPushNotification(
-                  appt.push_token,
+                await sendPushIfAllowed(
+                  appt.user_id,
                   "Appointment Approved ✅",
                   "Your appointment has been approved by the clinic."
                 );
@@ -847,8 +874,8 @@ router.put("/:id/approve", (req, res) => {
               if (diffMinutes >= 0 && diffMinutes <= 60 && appt.push_token) {
                 const message = `Reminder: You have an appointment for ${appt.service} with ${appt.doctor_name} at ${formatPH(appt.date, appt.time)}`;
 
-                await sendPushNotification(
-                  appt.push_token,
+                await sendPushIfAllowed(
+                  appt.user_id,
                   "🔔 Mediq Reminder",
                   message
                 );
@@ -935,8 +962,8 @@ router.put("/:id/complete", (req, res) => {
 
                     if (pushToken) {
                       try {
-                        await sendPushNotification(
-                          pushToken,
+                        await sendPushIfAllowed(
+                          userId,
                           "Appointment Completed 🏥",
                           `Your appointment for ${patientName} has been completed.`
                         );
@@ -1121,8 +1148,8 @@ router.put("/:id/status", (req, res) => {
           }
         
           if (rows[0].push_token) {
-            await sendPushNotification(
-              rows[0].push_token,
+            await sendPushIfAllowed(
+              rows[0].user_id,
               "Appointment Status Update",
               `Your appointment status is now ${status.replace("_", " ")}`
             );
@@ -1300,8 +1327,8 @@ router.put("/:id/staff-reschedule", (req, res) => {
                                       [old.user_id],
                                       async (err, rows) => {
                                         if (!err && rows.length > 0 && rows[0].push_token) {
-                                          await sendPushNotification(
-                                            rows[0].push_token,
+                                          await sendPushIfAllowed(
+                                            old.user_id,
                                             "Appointment Rescheduled 🔄",
                                             `Clinic moved your appointment to ${formatPH(date, time)}`
                                           );
