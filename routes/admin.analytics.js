@@ -126,6 +126,31 @@ totalAppointments === 0
       [days]
     );
 
+  /* 5️⃣.1️⃣ PEAK BOOKING HOURS (most scheduled times) */
+  const [peakBookingHours] = await db.promise().query(
+    `
+    SELECT 
+    HOUR(STR_TO_DATE(time,'%h:%i %p')) AS hour,
+    COUNT(*) AS total
+    FROM appointments
+    WHERE time IS NOT NULL
+    AND date >= CURDATE() - INTERVAL ? DAY
+    GROUP BY hour
+    ORDER BY total DESC
+    LIMIT 5
+    `,
+    [days]
+    );
+
+  const formattedPeakBookingHours = peakBookingHours.map((row) => ({
+    hour: new Date(0,0,0,row.hour).toLocaleTimeString([],{
+      hour:'numeric',
+      hour12:true
+    }),
+    total: row.total
+  }));
+  
+
     /* 6️⃣ PEAK HOURS */
     const [peakHours] = await db.promise().query(
       `
@@ -144,14 +169,15 @@ ORDER BY total DESC
     /* 6️⃣.0️⃣ BEST APPOINTMENT TIME (least booked schedule hour) */
 const [bestAppointment] = await db.promise().query(
   `
-  SELECT 
-  HOUR(time) AS hour,
-  COUNT(*) AS total
-  FROM appointments
-  WHERE date >= CURDATE() - INTERVAL ? DAY
-  GROUP BY hour
-  ORDER BY total ASC
-  LIMIT 1
+ SELECT 
+HOUR(STR_TO_DATE(time,'%h:%i %p')) AS hour,
+COUNT(*) AS total
+FROM appointments
+WHERE time IS NOT NULL
+AND date >= CURDATE() - INTERVAL ? DAY
+GROUP BY hour
+ORDER BY total ASC
+LIMIT 1
   `,
   [days]
   );
@@ -462,7 +488,14 @@ const [staffReliability] = await db.promise().query(`
         rescheduledCount,
         trend,
         doctorWorkload,
-        peakHours,
+        peakBookingHours: formattedPeakBookingHours,
+        peakHours: peakHours.map((row) => ({
+          hour: new Date(0,0,0,row.hour).toLocaleTimeString([],{
+            hour:'numeric',
+            hour12:true
+          }),
+          total: row.total
+        })),
         monthlyTrend,
         busiestMonth,
         genderDistribution,
@@ -474,7 +507,7 @@ const [staffReliability] = await db.promise().query(`
         staffProductivity,
         staffEfficiency,
         staffReliability,
-        
+
         bestAppointmentHour,
         bestVisitHour,
         peakCrowdHour,
