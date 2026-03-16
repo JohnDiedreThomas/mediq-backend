@@ -18,6 +18,7 @@ const servicesRoutes = require("./routes/services");
 const adminStaffRoutes = require("./routes/admin.staff");
 const adminAvailabilityRoutes = require("./routes/admin.availability");
 const adminDoctorsRoutes = require("./routes/admin.doctors");
+const patientInsights = require("./routes/patient.insights");
 
 const startReminderWorker = require("./reminderWorker");
 const runDailyCleanup = require("./utils/cleanupScheduler");
@@ -77,6 +78,7 @@ app.use("/api/notifications", require("./routes/notifications"));
 app.use("/api/arrival", require("./routes/arrival"));
 app.use("/api/reviews", require("./routes/reviews"));
 app.use("/api/profile", profileRoutes);
+app.use("/api/patient/insights", patientInsights);
 
 const PORT = process.env.PORT || 3000;
 
