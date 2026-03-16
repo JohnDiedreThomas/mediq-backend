@@ -290,13 +290,13 @@ router.post("/", (req, res) => {
                     
                       // ✅ PUSH to ALL STAFF
                       db.query(
-                        "SELECT push_token FROM users WHERE role = 'staff'",
+                        "SELECT id, push_token FROM users WHERE role = 'staff'",
                         async (err, rows) => {
                           if (!err && rows.length > 0) {
                             for (const staff of rows) {
                               if (staff.push_token) {
-                                await sendPushNotification(
-                                  staff.push_token,
+                                await sendPushIfAllowed(
+                                  staff.id,
                                   "New Appointment 📅",
                                   `${patient_name} booked for ${formatPH(date, time)}`
                                 );
@@ -537,13 +537,13 @@ router.put("/:id", (req, res) => {
                                   
                                     // 🔔 PUSH TO STAFF
                                     db.query(
-                                      "SELECT push_token FROM users WHERE role = 'staff'",
+                                      "SELECT id, push_token FROM users WHERE role = 'staff'",
                                       async (err, staffRows) => {
                                         if (!err && staffRows.length > 0) {
                                           for (const staff of staffRows) {
                                             if (staff.push_token) {
-                                              await sendPushNotification(
-                                                staff.push_token,
+                                              await sendPushIfAllowed(
+                                                staff.id,
                                                 "Patient Rescheduled 🔄",
                                                 `Appointment moved to ${date} at ${time}`
                                               );
@@ -559,8 +559,8 @@ router.put("/:id", (req, res) => {
                                       [id],
                                       async (err, rows) => {
                                         if (!err && rows.length > 0 && rows[0].push_token) {
-                                          await sendPushNotification(
-                                            rows[0].push_token,
+                                          await sendPushIfAllowed(
+                                            rows[0].user_id,
                                             "Appointment Rescheduled 🔄",
                                             `Your appointment is now ${formatPH(date, time)}`
                                           );
@@ -606,7 +606,7 @@ router.put("/:id/cancel", (req, res) => {
       }
 
       conn.query(
-        `SELECT status, doctor, date, time, user_id
+        `SELECT status, doctor, date, time, user_id, patient_name
          FROM appointments
          WHERE id = ?`,
          [id],
@@ -620,7 +620,7 @@ router.put("/:id/cancel", (req, res) => {
 
           const appt = rows[0];
 
-          const apptDateTime = new Date(`${appt.date} ${appt.time}`);
+          const apptDateTime = new Date(`${appt.date}T${convertTo24Hour(appt.time)}+08:00`);
           if (apptDateTime < new Date()) {
             return conn.rollback(() => {
               conn.release();
@@ -726,6 +726,34 @@ router.put("/:id/cancel", (req, res) => {
                                 `Appointment ID ${id} was cancelled`
                               ]
                             );
+                            // 🔔 PUSH NOTIFICATION TO STAFF
+  db.query(
+    "SELECT id, push_token FROM users WHERE role = 'staff'",
+    async (err, rows) => {
+
+      if (!err && rows.length > 0) {
+
+        for (const staff of rows) {
+
+          if (staff.push_token) {
+
+            const name = appt.patient_name || "A patient";
+          
+            await sendPushIfAllowed(
+              staff.id,
+              "Appointment Cancelled ❌",
+              `${name} cancelled appointment for ${formatPH(appt.date, appt.time)}`
+            );
+          
+          }
+
+        }
+
+      }
+
+    }
+  );
+
 
                             res.json({ success: true });
                           });

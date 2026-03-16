@@ -71,13 +71,13 @@ router.delete("/user/:userId", (req, res) => {
 });
 
 /* DELETE SINGLE NOTIFICATION */
-router.delete("/:id", (req, res) => {
+router.delete("/:id/:userId", (req, res) => {
 
-  const { id } = req.params;
+  const { id, userId } = req.params;
 
   db.query(
-    "DELETE FROM notifications WHERE id = ?",
-    [id],
+    "DELETE FROM notifications WHERE id = ? AND user_id = ?",
+    [id, userId],
     (err) => {
 
       if (err) {
@@ -92,24 +92,20 @@ router.delete("/:id", (req, res) => {
 
 });
 
-/* GET USER NOTIFICATIONS */
-router.get("/:userId", (req, res) => {
-
-  const { userId } = req.params;
+/* STAFF NOTIFICATIONS */
+router.get("/staff", (req, res) => {
 
   db.query(
     `
-    SELECT id,user_id,title,message,is_read,created_at
-    FROM notifications
-    WHERE user_id = ?
+    SELECT id,title,message,created_at
+    FROM staff_notifications
     ORDER BY created_at DESC
     LIMIT 50
     `,
-    [userId],
     (err, rows) => {
 
       if (err) {
-        console.error("NOTIF FETCH ERROR:", err);
+        console.error("STAFF NOTIF ERROR:", err);
         return res.json({ success:false });
       }
 
@@ -120,7 +116,9 @@ router.get("/:userId", (req, res) => {
 
     }
   );
+
 });
+
 
 /* GET MUTE STATUS */
 router.get("/mute/:userId", (req, res) => {
@@ -164,5 +162,37 @@ router.put("/mute/:userId",(req,res)=>{
   );
 
 });
+
+/* GET USER NOTIFICATIONS */
+router.get("/:userId", (req, res) => {
+
+  const { userId } = req.params;
+
+  db.query(
+    `
+    SELECT id,user_id,title,message,is_read,created_at
+    FROM notifications
+    WHERE user_id = ?
+    ORDER BY created_at DESC
+    LIMIT 50
+    `,
+    [userId],
+    (err, rows) => {
+
+      if (err) {
+        console.error("NOTIF FETCH ERROR:", err);
+        return res.json({ success:false });
+      }
+
+      res.json({
+        success:true,
+        notifications:rows
+      });
+
+    }
+  );
+});
+
+
 
 module.exports = router;

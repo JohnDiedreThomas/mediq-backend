@@ -100,45 +100,56 @@ router.post("/", (req, res) => {
                 if (!err && result.affectedRows > 0) {
 
                   console.log(`🟡 User ${userId} entered clinic radius`);
-
+                
+                  // ⭐ GET PATIENT NAME FIRST
                   db.query(
-                    "SELECT id, push_token FROM users WHERE role='staff'",
-                    async (err, staffRows) => {
-
-                      if (!err && staffRows) {
-
-                        for (const staff of staffRows) {
-
-                          db.query(
-                            `INSERT INTO notifications (user_id, title, message)
-                             VALUES (?, ?, ?)`,
-                            [
-                              staff.id,
-                              "Patient Nearby",
-                              "A patient is approaching the clinic"
-                            ]
-                          );
-
-                          if (staff.push_token) {
-                            try {
-                              await sendPushNotification(
-                                staff.push_token,
-                                "Patient Nearby 📍",
-                                "A patient is approaching the clinic"
+                    "SELECT name FROM users WHERE id = ?",
+                    [userId],
+                    (err, userRows) => {
+                
+                      const patientName = userRows?.[0]?.name || "A patient";
+                
+                      db.query(
+                        "SELECT id, push_token FROM users WHERE role='staff'",
+                        async (err, staffRows) => {
+                
+                          if (!err && staffRows) {
+                
+                            for (const staff of staffRows) {
+                
+                              db.query(
+                                `INSERT INTO notifications (user_id, title, message)
+                                 VALUES (?, ?, ?)`,
+                                [
+                                  staff.id,
+                                  "Patient Nearby",
+                                  `${patientName} is approaching the clinic`
+                                ]
                               );
-                            } catch (e) {
-                              console.log("Push send error:", e);
+                
+                              if (staff.push_token) {
+                                try {
+                                  await sendPushNotification(
+                                    staff.push_token,
+                                    "Patient Nearby 📍",
+                                    `${patientName} is approaching the clinic`
+                                  );
+                                } catch (e) {
+                                  console.log("Push send error:", e);
+                                }
+                              }
+                
                             }
+                
                           }
+                
                         }
-
-                      }
-
+                      );
+                
                     }
                   );
-
+                
                 }
-
               }
             );
 
