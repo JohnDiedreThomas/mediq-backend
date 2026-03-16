@@ -142,13 +142,21 @@ totalAppointments === 0
     [days]
     );
 
-  const formattedPeakBookingHours = peakBookingHours.map((row) => ({
-    hour: new Date(0,0,0,row.hour).toLocaleTimeString([],{
-      hour:'numeric',
-      hour12:true
-    }),
-    total: row.total
-  }));
+    const formattedPeakBookingHours = peakBookingHours.map((row) => {
+      const hour = Number(row.hour);
+      const displayHour = hour === 0
+        ? "12 AM"
+        : hour < 12
+        ? `${hour} AM`
+        : hour === 12
+        ? "12 PM"
+        : `${hour - 12} PM`;
+    
+      return {
+        hour: displayHour,
+        total: row.total
+      };
+    });
   
 
     /* 6️⃣ PEAK HOURS */
@@ -184,8 +192,16 @@ LIMIT 1
   
   const bestAppointmentHour =
   bestAppointment.length && bestAppointment[0].hour !== null
-    ? new Date(0,0,0,bestAppointment[0].hour)
-        .toLocaleTimeString([], { hour: 'numeric', hour12: true })
+  ? (() => {
+    const hour = Number(bestAppointment[0].hour);
+    return hour === 0
+      ? "12 AM"
+      : hour < 12
+      ? `${hour} AM`
+      : hour === 12
+      ? "12 PM"
+      : `${hour - 12} PM`;
+  })()
     : null;
 
     /* 6️⃣.1️⃣ BEST VISIT TIME (least busy hour) */
@@ -206,13 +222,31 @@ LIMIT 1
   
   const bestVisitHour =
   bestVisit.length && bestVisit[0].hour !== null
-    ? new Date(0,0,0,bestVisit[0].hour).toLocaleTimeString([], {hour:'numeric', hour12:true})
+  ? (() => {
+    const hour = Number(bestVisit[0].hour);
+    return hour === 0
+      ? "12 AM"
+      : hour < 12
+      ? `${hour} AM`
+      : hour === 12
+      ? "12 PM"
+      : `${hour - 12} PM`;
+  })()
     : null;
   
   
   /* 6️⃣.2️⃣ PEAK CROWD HOUR */
   const peakCrowdHour = peakHours.length
-    ? new Date(0,0,0,peakHours[0].hour).toLocaleTimeString([], {hour:'numeric', hour12:true})
+    ? (() => {
+      const hour = Number(peakHours[0].hour);
+      return hour === 0
+        ? "12 AM"
+        : hour < 12
+        ? `${hour} AM`
+        : hour === 12
+        ? "12 PM"
+        : `${hour - 12} PM`;
+    })()
     : null;
   
   
@@ -489,13 +523,21 @@ const [staffReliability] = await db.promise().query(`
         trend,
         doctorWorkload,
         peakBookingHours: formattedPeakBookingHours,
-        peakHours: peakHours.map((row) => ({
-          hour: new Date(0,0,0,row.hour).toLocaleTimeString([],{
-            hour:'numeric',
-            hour12:true
-          }),
-          total: row.total
-        })),
+        peakHours: peakHours.map((row) => {
+          const hour = Number(row.hour ?? 0);
+          const displayHour = hour === 0
+            ? "12 AM"
+            : hour < 12
+            ? `${hour} AM`
+            : hour === 12
+            ? "12 PM"
+            : `${hour - 12} PM`;
+        
+          return {
+            hour: displayHour,
+            total: row.total
+          };
+        }),
         monthlyTrend,
         busiestMonth,
         genderDistribution,
