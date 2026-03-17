@@ -1,5 +1,6 @@
 const db = require("./db");
 const { sendPushNotification } = require("./pushNotification");
+const { sendPushIfAllowed } = require("./routes/appointments");
 
 /*
 |-----------------------------------------------------------
@@ -43,6 +44,7 @@ function startReminderWorker() {
     const sql = `
       SELECT 
         a.id,
+         a.user_id, 
         a.date,
         a.time,
         a.service,
@@ -112,12 +114,12 @@ function startReminderWorker() {
           | Reminder window
           |---------------------------------------------------
           */
-          if (diffMinutes >= -10 && diffMinutes <= 60) {
+          if (diffMinutes > 0 && diffMinutes <= 60) {
             if (appt.push_token) {
               const message = `Reminder: You have an appointment for ${appt.service} with ${appt.doctor_name} at ${appt.time}`;
 
-              await sendPushNotification(
-                appt.push_token,
+              await sendPushIfAllowed(
+                appt.user_id,
                 "🔔 Mediq Reminder",
                 message
               );

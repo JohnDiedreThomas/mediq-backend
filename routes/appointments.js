@@ -1336,13 +1336,7 @@ router.put("/:id/staff-reschedule", (req, res) => {
                                       console.log("🔍 AFTER UPDATE:", check);
                                     }
                                   );
-                                  if (err) {
-                                    return conn.rollback(() => {
-                                      conn.release();
-                                      res.json({ success: false });
-                                    });
-                                  }
-
+                            
                                   conn.commit(err => {
                                     conn.release();
 
@@ -1444,4 +1438,7 @@ router.get("/check-duplicate", (req, res) => {
   );
 
 });
-module.exports = router;
+module.exports = {
+  router,
+  sendPushIfAllowed
+};
