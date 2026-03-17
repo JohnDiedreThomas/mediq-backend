@@ -207,7 +207,8 @@ router.get("/nearby", (req, res) => {
       u.longitude,
       u.last_location_update,
       a.arrived_at,
-      a.arrival_stage
+      a.arrival_stage,
+       a.status  
     FROM users u
     JOIN appointments a ON a.user_id = u.id
     WHERE a.arrived = 1
