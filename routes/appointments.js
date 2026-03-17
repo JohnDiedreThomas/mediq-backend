@@ -1197,6 +1197,9 @@ router.put("/:id/status", (req, res) => {
     }
   );
 });
+
+
+
 /*
 |--------------------------------------------------
 | STAFF RESCHEDULE APPOINTMENT
@@ -1220,10 +1223,9 @@ router.put("/:id/staff-reschedule", (req, res) => {
         conn.release();
         return res.json({ success: false });
       }
-
-      conn.query(
-        "SELECT doctor, date, time, user_id FROM appointments WHERE id = ?",
-        [id],
+        conn.query(
+          "SELECT doctor, date, time, user_id, patient_name FROM appointments WHERE id = ?",
+          [id],
         (err, rows) => {
           if (err || rows.length === 0) {
             return conn.rollback(() => {
@@ -1313,8 +1315,27 @@ router.put("/:id/staff-reschedule", (req, res) => {
                                 `UPDATE appointments
                                  SET doctor=?, date=?, time=?, rescheduled=1, rescheduled_by=?, reminder_sent=0
                                  WHERE id=?`,
-                                 [doctor, date, time, staffId, id],
-                                err => {
+                                [doctor, date, time, staffId, id],
+                                (err, result) => {
+                              
+                                  if (err) {
+                                    console.log("❌ UPDATE ERROR:", err);
+                                    return conn.rollback(() => {
+                                      conn.release();
+                                      res.json({ success: false });
+                                    });
+                                  }
+                              
+                                  console.log("✅ UPDATE RESULT:", result);
+                              
+                                  // 🔥 CHECK IF rescheduled REALLY UPDATED
+                                  conn.query(
+                                    "SELECT rescheduled, rescheduled_by FROM appointments WHERE id=?",
+                                    [id],
+                                    (err, check) => {
+                                      console.log("🔍 AFTER UPDATE:", check);
+                                    }
+                                  );
                                   if (err) {
                                     return conn.rollback(() => {
                                       conn.release();

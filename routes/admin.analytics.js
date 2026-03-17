@@ -89,7 +89,6 @@ totalAppointments === 0
       SELECT COUNT(*) AS total
       FROM appointments
       WHERE rescheduled = 1
-      AND date >= CURDATE() - INTERVAL ? DAY
       `,
       [days]
     );
