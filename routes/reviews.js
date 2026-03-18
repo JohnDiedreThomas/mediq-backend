@@ -103,32 +103,44 @@ router.delete("/:id", (req, res) => {
     return res.json({ success: false, message: "Missing user ID" });
   }
 
-  const sql = `
-    DELETE FROM doctor_reviews
-    WHERE id = ? AND user_id = ?
-  `;
+  // 🔥 STEP 1: delete comments first
+  db.query(
+    "DELETE FROM review_comments WHERE review_id = ?",
+    [reviewId],
+    (err) => {
 
-  db.query(sql, [reviewId, user_id], (err, result) => {
+      if (err) {
+        console.error(err);
+        return res.json({ success: false });
+      }
 
-    if (err) {
-      console.error(err);
-      return res.json({ success: false });
+      // 🔥 STEP 2: delete review
+      db.query(
+        "DELETE FROM doctor_reviews WHERE id = ? AND user_id = ?",
+        [reviewId, user_id],
+        (err, result) => {
+
+          if (err) {
+            console.error(err);
+            return res.json({ success: false });
+          }
+
+          if (result.affectedRows === 0) {
+            return res.json({
+              success: false,
+              message: "You can only delete your own review"
+            });
+          }
+
+          res.json({ success: true });
+
+        }
+      );
+
     }
-
-    if (result.affectedRows === 0) {
-      return res.json({
-        success: false,
-        message: "You can only delete your own review"
-      });
-    }
-
-    res.json({ success: true });
-
-  });
-  
+  );
 
 });
-
 
 
 /* =====================
@@ -137,7 +149,7 @@ router.delete("/:id", (req, res) => {
 router.post("/:reviewId/comments", (req, res) => {
 
   const reviewId = parseInt(req.params.reviewId);
-  const { comment } = req.body;
+  const { comment, parent_id } = req.body;
   const user_id = req.headers["x-user-id"];
 
   if (!comment || !user_id) {
@@ -145,11 +157,11 @@ router.post("/:reviewId/comments", (req, res) => {
   }
 
   const sql = `
-    INSERT INTO review_comments (review_id, user_id, comment)
-    VALUES (?, ?, ?)
+    INSERT INTO review_comments (review_id, user_id, comment, parent_id)
+    VALUES (?, ?, ?, ?)
   `;
 
-  db.query(sql, [reviewId, user_id, comment], (err) => {
+  db.query(sql, [reviewId, user_id, comment, parent_id || null], (err) => {
 
     if (err) {
       console.error(err);
@@ -206,11 +218,12 @@ router.delete("/comments/:id", (req, res) => {
   }
 
   const sql = `
-    DELETE FROM review_comments
-    WHERE id = ? AND user_id = ?
-  `;
+  DELETE FROM review_comments
+  WHERE (id = ? OR parent_id = ?)
+  AND user_id = ?
+`;
 
-  db.query(sql, [commentId, user_id], (err, result) => {
+db.query(sql, [commentId, commentId, user_id], (err, result) => {
 
     if (err) {
       console.error(err);
