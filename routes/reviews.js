@@ -219,8 +219,7 @@ router.delete("/comments/:id", (req, res) => {
 
   const sql = `
   DELETE FROM review_comments
-  WHERE (id = ? OR parent_id = ?)
-  AND user_id = ?
+WHERE id = ?
 `;
 
 db.query(sql, [commentId, commentId, user_id], (err, result) => {
