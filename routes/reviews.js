@@ -192,4 +192,41 @@ router.get("/:reviewId/comments", (req, res) => {
   });
 
 });
+
+/* =====================
+   DELETE COMMENT
+===================== */
+router.delete("/comments/:id", (req, res) => {
+
+  const commentId = parseInt(req.params.id);
+  const user_id = req.headers["x-user-id"];
+
+  if (!user_id) {
+    return res.json({ success: false, message: "Missing user ID" });
+  }
+
+  const sql = `
+    DELETE FROM review_comments
+    WHERE id = ? AND user_id = ?
+  `;
+
+  db.query(sql, [commentId, user_id], (err, result) => {
+
+    if (err) {
+      console.error(err);
+      return res.json({ success: false });
+    }
+
+    if (result.affectedRows === 0) {
+      return res.json({
+        success: false,
+        message: "You can only delete your own comment"
+      });
+    }
+
+    res.json({ success: true });
+
+  });
+
+});
 module.exports = router;
