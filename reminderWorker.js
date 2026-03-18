@@ -45,17 +45,19 @@ function startReminderWorker() {
       SELECT 
         a.id,
          a.user_id, 
+        a.patient_name, 
         a.date,
         a.time,
         a.service,
+         a.status, 
         a.reminder_sent,
+        a.staff_reminder_sent,
         u.push_token,
         d.name AS doctor_name
       FROM appointments a
       JOIN users u ON u.id = a.user_id
       LEFT JOIN doctors d ON d.id = a.doctor
       WHERE a.status = 'approved'
-        AND a.reminder_sent = 0
     `;
 
     db.query(sql, async (err, rows) => {
@@ -95,6 +97,117 @@ function startReminderWorker() {
           }
 
           const diffMinutes = (apptDateTime - now) / (1000 * 60);
+
+    // =======================================================
+// 🔔 1 DAY BEFORE → STAFF REMINDER (FINAL CLEAN VERSION)
+// =======================================================
+const diffHours = diffMinutes / 60;
+
+if (
+  diffHours <= 24 &&
+  diffHours > 23 &&
+  appt.staff_reminder_sent === 0
+) {
+  console.log("🔔 Staff reminder (1 day before):", appt.id);
+
+  try {
+    // ✅ get staff once
+    const staffRows = await new Promise((resolve, reject) => {
+      db.query(
+        "SELECT id FROM users WHERE role = 'staff'",
+        (err, rows) => {
+          if (err) return reject(err);
+          resolve(rows);
+        }
+      );
+    });
+
+    if (!staffRows.length) return;
+
+    // ✅ send push to all staff (FAST)
+    await Promise.all(
+      staffRows.map(staff =>
+        sendPushIfAllowed(
+          staff.id,
+          "📅 Upcoming Patient Appointment",
+          `Reminder: ${appt.patient_name} has a ${appt.service} appointment tomorrow at ${appt.time} with ${appt.doctor_name}`
+        )
+      )
+    );
+
+    // ✅ mark as sent ONLY after success
+    await new Promise((resolve, reject) => {
+      db.query(
+        "UPDATE appointments SET staff_reminder_sent = 1 WHERE id = ?",
+        [appt.id],
+        (err) => {
+          if (err) return reject(err);
+          resolve();
+        }
+      );
+    });
+
+
+
+    // =======================================================
+// ⚠️ 1 DAY BEFORE → PENDING APPOINTMENT REMINDER (STAFF)
+// =======================================================
+if (
+  appt.status === "pending" &&
+  diffHours <= 24 &&
+  diffHours > 23 &&
+  appt.staff_reminder_sent === 0
+) {
+  console.log("⚠️ Pending appointment reminder:", appt.id);
+
+  try {
+    const staffRows = await new Promise((resolve, reject) => {
+      db.query(
+        "SELECT id FROM users WHERE role = 'staff'",
+        (err, rows) => {
+          if (err) return reject(err);
+          resolve(rows);
+        }
+      );
+    });
+
+    if (!staffRows.length) return;
+
+    await Promise.all(
+      staffRows.map(staff =>
+        sendPushIfAllowed(
+          staff.id,
+          "⚠️ Pending Appointment Needs Approval",
+          `Reminder: ${appt.patient_name} has a pending ${appt.service} tomorrow at ${appt.time}. Please approve or manage it.`
+        )
+      )
+    );
+
+    await new Promise((resolve, reject) => {
+      db.query(
+        "UPDATE appointments SET staff_reminder_sent = 1 WHERE id = ?",
+        [appt.id],
+        (err) => {
+          if (err) return reject(err);
+          resolve();
+        }
+      );
+    });
+
+    console.log("✅ Pending reminder sent:", appt.id);
+
+  } catch (error) {
+    console.error("❌ Pending reminder error:", error);
+  }
+}
+
+    console.log("✅ Staff reminder sent:", appt.id);
+
+  } catch (error) {
+    console.error("❌ Staff reminder error:", error);
+  }
+}
+
 
           console.log("📍 ID:", appt.id);
           console.log(
