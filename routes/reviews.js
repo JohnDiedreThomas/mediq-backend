@@ -125,6 +125,71 @@ router.delete("/:id", (req, res) => {
     res.json({ success: true });
 
   });
+  
+
+});
+
+
+
+/* =====================
+   ADD COMMENT TO REVIEW
+===================== */
+router.post("/:reviewId/comments", (req, res) => {
+
+  const reviewId = parseInt(req.params.reviewId);
+  const { comment } = req.body;
+  const user_id = req.headers["x-user-id"];
+
+  if (!comment || !user_id) {
+    return res.json({ success: false, message: "Missing fields" });
+  }
+
+  const sql = `
+    INSERT INTO review_comments (review_id, user_id, comment)
+    VALUES (?, ?, ?)
+  `;
+
+  db.query(sql, [reviewId, user_id, comment], (err) => {
+
+    if (err) {
+      console.error(err);
+      return res.json({ success: false });
+    }
+
+    res.json({ success: true });
+
+  });
+
+});
+
+/* =====================
+   GET COMMENTS PER REVIEW
+===================== */
+router.get("/:reviewId/comments", (req, res) => {
+
+  const reviewId = parseInt(req.params.reviewId);
+
+  const sql = `
+    SELECT rc.*, u.name, u.role
+    FROM review_comments rc
+    LEFT JOIN users u ON rc.user_id = u.id
+    WHERE rc.review_id = ?
+    ORDER BY rc.created_at ASC
+  `;
+
+  db.query(sql, [reviewId], (err, results) => {
+
+    if (err) {
+      console.error(err);
+      return res.json({ success: false });
+    }
+
+    res.json({
+      success: true,
+      comments: results
+    });
+
+  });
 
 });
 module.exports = router;
