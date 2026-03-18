@@ -86,9 +86,9 @@ totalAppointments === 0
     /* 3️⃣ RESCHEDULE COUNT */
     const [rescheduleResult] = await db.promise().query(
       `
-      SELECT COUNT(*) AS total
-      FROM appointments
-      WHERE rescheduled = 1
+      SELECT SUM(reschedule_count) AS total
+FROM appointments
+WHERE date >= CURDATE() - INTERVAL ? DAY
       `,
       [days]
     );
@@ -96,9 +96,9 @@ totalAppointments === 0
     const rescheduledCount = rescheduleResult[0].total || 0;
 
     const rescheduleRate =
-      totalAppointments === 0
-        ? 0
-        : (rescheduledCount / totalAppointments) * 100;
+    totalAppointments === 0
+      ? 0
+      : rescheduledCount / totalAppointments;
 
     /* 4️⃣ DAILY TREND */
     const [trend] = await db.promise().query(

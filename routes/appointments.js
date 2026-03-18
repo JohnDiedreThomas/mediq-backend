@@ -494,7 +494,9 @@ router.put("/:id", (req, res) => {
                                  SET service_id=?, service=?, doctor=?, date=?, time=?,
                                      patient_name=?, patient_birthdate=?, patient_age=?,  patient_gender=?, connection_to_clinic=?, 
                                      patient_notes=?,
-                                     rescheduled=1, reminder_sent=0
+                                     rescheduled=1, 
+                                     reschedule_count = reschedule_count + 1, 
+                                     reminder_sent=0
                                  WHERE id=?`,
                                 [
                                   service_id,
@@ -841,7 +843,6 @@ router.put("/:id/approve", (req, res) => {
         `UPDATE appointments
          SET status = 'approved',
          approved_by = ?,
-            rescheduled = 0,
             reminder_sent = 0
          WHERE id = ? AND status = 'pending'`,
          [staffId, id],
@@ -1313,7 +1314,7 @@ router.put("/:id/staff-reschedule", (req, res) => {
 
                               conn.query(
                                 `UPDATE appointments
-                                 SET doctor=?, date=?, time=?, rescheduled=1, rescheduled_by=?, reminder_sent=0
+                                 SET doctor=?, date=?, time=?, rescheduled=1,reschedule_count = reschedule_count + 1,rescheduled_by=?, reminder_sent=0
                                  WHERE id=?`,
                                 [doctor, date, time, staffId, id],
                                 (err, result) => {
