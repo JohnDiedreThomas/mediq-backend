@@ -8,10 +8,19 @@ const db = require("../db");
 router.post("/", (req, res) => {
   console.log("🔥 Review request received:", req.body);
 
-  const { doctor_id, user_id, rating, comment } = req.body;
+  const user_id = Number(req.headers["x-user-id"]); // ✅ GET FROM HEADER
+  const { doctor_id, rating, comment } = req.body;
 
   if (!doctor_id || !user_id || !rating) {
     return res.json({ success: false, message: "Missing fields" });
+  }
+  if (
+    !Number.isInteger(Number(doctor_id)) ||
+    !Number.isInteger(Number(user_id)) ||
+    !Number.isInteger(Number(rating)) ||
+    rating < 1 || rating > 5
+  ) {
+    return res.json({ success:false, message:"Invalid input" });
   }
 
   const sql = `
@@ -38,6 +47,9 @@ router.post("/", (req, res) => {
 router.get("/:doctorId", (req, res) => {
 
   const doctorId = parseInt(req.params.doctorId);
+  if (isNaN(doctorId)) {
+    return res.json({ success:false, message:"Invalid doctor ID" });
+  }
   const user_id = req.headers["x-user-id"] || 0;
 
   const sql = `
@@ -62,7 +74,7 @@ ON rc.review_id = r.id
 AND rc.id = (
   SELECT id FROM review_comments 
 WHERE review_id = r.id 
-ORDER BY created_at ASC 
+ORDER BY created_at DESC 
 LIMIT 1
 )
     LEFT JOIN users au ON rc.user_id = au.id
@@ -93,21 +105,32 @@ router.put("/:id", (req, res) => {
   const reviewId = parseInt(req.params.id);
   const { rating, comment } = req.body;
 
-  if (!rating) {
-    return res.json({ success:false, message:"Missing rating" });
+  if (
+    !Number.isInteger(Number(rating)) ||
+    rating < 1 || rating > 5
+  ) {
+    return res.json({ success:false, message:"Invalid rating" });
   }
+  const user_id = req.headers["x-user-id"];
 
   const sql = `
     UPDATE doctor_reviews
     SET rating = ?, comment = ?
-    WHERE id = ?
+    WHERE id = ? AND user_id = ?
   `;
 
-  db.query(sql, [rating, comment || null, reviewId], (err) => {
+  db.query(sql, [rating, comment || null, reviewId, user_id], (err, result) => {
 
     if (err) {
       console.error(err);
       return res.json({ success:false });
+    }
+  
+    if (result.affectedRows === 0) {
+      return res.json({
+        success:false,
+        message:"You can only edit your own review"
+      });
     }
 
     res.json({ success:true });
@@ -123,7 +146,10 @@ router.put("/:id", (req, res) => {
 router.delete("/:id", (req, res) => {
 
   const reviewId = parseInt(req.params.id);
-  const { user_id } = req.body;
+  if (isNaN(reviewId)) {
+    return res.json({ success:false, message:"Invalid review ID" });
+  }
+  const user_id = req.headers["x-user-id"];
 
   if (!user_id) {
     return res.json({ success: false, message: "Missing user ID" });
@@ -135,41 +161,37 @@ router.delete("/:id", (req, res) => {
     [reviewId],
     (err) => {
   
-      if (err) {
-        console.error(err);
-        return res.json({ success: false });
-      }
+      if (err) return res.json({ success:false });
   
-      // ✅ delete votes AFTER success
       db.query(
         "DELETE FROM review_votes WHERE review_id = ?",
         [reviewId],
-        () => {}
-      );
-
-      // 🔥 STEP 2: delete review
-      db.query(
-        "DELETE FROM doctor_reviews WHERE id = ? AND user_id = ?",
-        [reviewId, user_id],
-        (err, result) => {
-
-          if (err) {
-            console.error(err);
-            return res.json({ success: false });
-          }
-
-          if (result.affectedRows === 0) {
-            return res.json({
-              success: false,
-              message: "You can only delete your own review"
-            });
-          }
-
-          res.json({ success: true });
-
+        (err) => {
+  
+          if (err) return res.json({ success:false });
+  
+          db.query(
+            "DELETE FROM doctor_reviews WHERE id = ? AND user_id = ?",
+            [reviewId, user_id],
+            (err, result) => {
+  
+              if (err) return res.json({ success:false });
+  
+              if (result.affectedRows === 0) {
+                return res.json({
+                  success:false,
+                  message:"You can only delete your own review"
+                });
+              }
+  
+              res.json({ success:true });
+  
+            }
+          );
+  
         }
       );
-
+  
     }
   );
 
@@ -182,6 +204,9 @@ router.delete("/:id", (req, res) => {
 router.post("/:reviewId/comments", (req, res) => {
 
   const reviewId = parseInt(req.params.reviewId);
+  if (isNaN(reviewId)) {
+    return res.json({ success:false, message:"Invalid review ID" });
+  }
   const { comment } = req.body;
   const user_id = req.headers["x-user-id"] || 0;
 
@@ -318,6 +343,9 @@ db.query(sql, [commentId, user_id], (err, result) => {
 router.post("/:reviewId/vote", (req, res) => {
 
   const reviewId = parseInt(req.params.reviewId);
+  if (isNaN(reviewId)) {
+    return res.json({ success:false, message:"Invalid review ID" });
+  }
   const { type } = req.body;
   const user_id = req.headers["x-user-id"] || 0;
 
