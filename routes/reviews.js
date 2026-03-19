@@ -239,4 +239,95 @@ router.post("/:id/vote", (req, res) => {
   });
 
 });
+
+/* =====================
+   ADD COMMENT (REPLY)
+===================== */
+router.post("/:id/comments", (req, res) => {
+
+  const reviewId = parseInt(req.params.id);
+  const user_id = Number(req.headers["x-user-id"]);
+  const { comment } = req.body;
+
+  if (!reviewId || !user_id || !comment) {
+    return res.json({ success:false, message:"Missing fields" });
+  }
+
+  const sql = `
+    INSERT INTO review_comments (review_id, user_id, comment)
+    VALUES (?, ?, ?)
+  `;
+
+  db.query(sql, [reviewId, user_id, comment], (err) => {
+    if (err) {
+      console.error("COMMENT ERROR:", err);
+      return res.json({ success:false });
+    }
+
+    res.json({ success:true });
+  });
+
+});
+
+/* =====================
+   GET COMMENTS
+===================== */
+router.get("/:id/comments", (req, res) => {
+
+  const reviewId = parseInt(req.params.id);
+
+  const sql = `
+    SELECT rc.*, u.name, u.role
+    FROM review_comments rc
+    LEFT JOIN users u ON rc.user_id = u.id
+    WHERE rc.review_id = ?
+    ORDER BY rc.created_at ASC
+  `;
+
+  db.query(sql, [reviewId], (err, results) => {
+    if (err) {
+      console.error(err);
+      return res.json({ success:false });
+    }
+
+    res.json({
+      success:true,
+      comments: results
+    });
+  });
+
+});
+
+/* =====================
+   DELETE COMMENT
+===================== */
+router.delete("/comments/:id", (req, res) => {
+
+  const commentId = parseInt(req.params.id);
+  const user_id = Number(req.headers["x-user-id"]);
+
+  const sql = `
+    DELETE FROM review_comments
+    WHERE id = ? AND user_id = ?
+  `;
+
+  db.query(sql, [commentId, user_id], (err, result) => {
+
+    if (err) {
+      console.error(err);
+      return res.json({ success:false });
+    }
+
+    if (result.affectedRows === 0) {
+      return res.json({
+        success:false,
+        message:"You can only delete your own comment"
+      });
+    }
+
+    res.json({ success:true });
+
+  });
+
+});
 module.exports = router;
