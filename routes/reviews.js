@@ -38,7 +38,7 @@ router.post("/", (req, res) => {
 router.get("/:doctorId", (req, res) => {
 
   const doctorId = parseInt(req.params.doctorId);
-  const user_id = req.headers["x-user-id"]; // ✅ ADD THIS
+  const user_id = req.headers["x-user-id"] || 0;
 
   const sql = `
     SELECT 
@@ -57,7 +57,14 @@ router.get("/:doctorId", (req, res) => {
 
     FROM doctor_reviews r
     LEFT JOIN users u ON r.user_id = u.id
-    LEFT JOIN review_comments rc ON rc.review_id = r.id
+    LEFT JOIN review_comments rc 
+ON rc.review_id = r.id 
+AND rc.id = (
+  SELECT id FROM review_comments 
+WHERE review_id = r.id 
+ORDER BY created_at ASC 
+LIMIT 1
+)
     LEFT JOIN users au ON rc.user_id = au.id
 
     WHERE r.doctor_id = ?
@@ -176,7 +183,7 @@ router.post("/:reviewId/comments", (req, res) => {
 
   const reviewId = parseInt(req.params.reviewId);
   const { comment } = req.body;
-  const user_id = req.headers["x-user-id"];
+  const user_id = req.headers["x-user-id"] || 0;
 
   if (!comment || !user_id) {
     return res.json({ success: false, message: "Missing fields" });
@@ -277,7 +284,7 @@ router.get("/:reviewId/comments", (req, res) => {
 router.delete("/comments/:id", (req, res) => {
 
   const commentId = parseInt(req.params.id);
-  const user_id = req.headers["x-user-id"];
+  const user_id = req.headers["x-user-id"] || 0;
 
   if (!user_id) {
     return res.json({ success: false, message: "Missing user ID" });
@@ -312,7 +319,7 @@ router.post("/:reviewId/vote", (req, res) => {
 
   const reviewId = parseInt(req.params.reviewId);
   const { type } = req.body;
-  const user_id = req.headers["x-user-id"];
+  const user_id = req.headers["x-user-id"] || 0;
 
   if (!user_id || !type) {
     return res.json({ success:false });
@@ -331,6 +338,11 @@ router.post("/:reviewId/vote", (req, res) => {
     [reviewId],
     (err, result) => {
 
+      if (err) {
+        console.error(err);
+        return res.json({ success:false });
+      }
+    
       if (!result || result.length === 0) {
         return res.json({ success:false });
       }
