@@ -216,7 +216,7 @@ router.get("/nearby", (req, res) => {
     AND DATE(a.date) = DATE(CONVERT_TZ(NOW(), '+00:00', '+08:00'))
     AND u.latitude IS NOT NULL
     AND u.longitude IS NOT NULL
-    AND u.last_location_update > NOW() - INTERVAL 2 MINUTE
+    AND u.last_location_update > NOW() - INTERVAL 10 MINUTE
     `,
     (err, rows) => {
 
