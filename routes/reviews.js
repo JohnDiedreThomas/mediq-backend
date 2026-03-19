@@ -74,6 +74,7 @@ COALESCE(SUM(CASE WHEN rv.vote = 'no' THEN 1 ELSE 0 END),0) AS helpful_no,
    LIMIT 1) AS user_vote
 
 FROM doctor_reviews r
+LEFT JOIN review_votes rv ON rv.review_id = r.id
 LEFT JOIN users u ON r.user_id = u.id
 
 -- ✅ ONLY ADMIN REPLIES
@@ -93,6 +94,7 @@ AND rc.id = (
 LEFT JOIN users au ON rc.user_id = au.id
 
 WHERE r.doctor_id = ?
+GROUP BY r.id
 ORDER BY r.created_at DESC
   `;
 
