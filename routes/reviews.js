@@ -50,7 +50,7 @@ router.get("/:doctorId", (req, res) => {
   if (isNaN(doctorId)) {
     return res.json({ success:false, message:"Invalid doctor ID" });
   }
-  const user_id = Number(req.headers["x-user-id"]) || 0;
+  const user_id = Number(req.headers["x-user-id"]);
   console.log("HEADER USER ID:", user_id);
   const sql = `
   SELECT 
@@ -96,15 +96,14 @@ WHERE r.doctor_id = ?
 ORDER BY r.created_at DESC
   `;
 
-  db.query(sql, [user_id, doctorId], (err, results) => { // ✅ FIXED
+  db.query(sql, [user_id || 0, doctorId], (err, results) => {
     if (err) {
-      console.error(err);
-      return res.json({ success: false });
+      return res.json({ success: false, message: err.message });
     }
-
+  
     res.json({
       success: true,
-      reviews: results,
+      reviews: results || [],
     });
   });
 
