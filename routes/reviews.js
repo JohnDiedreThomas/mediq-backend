@@ -209,4 +209,34 @@ router.delete("/:id", (req, res) => {
   );
 
 });
+
+/* =====================
+   VOTE REVIEW (YES/NO)
+===================== */
+router.post("/:id/vote", (req, res) => {
+
+  const reviewId = parseInt(req.params.id);
+  const user_id = Number(req.headers["x-user-id"]);
+  const { type } = req.body;
+
+  if (!reviewId || !user_id || !["yes","no"].includes(type)) {
+    return res.json({ success:false, message:"Invalid input" });
+  }
+
+  const sql = `
+    INSERT INTO review_votes (review_id, user_id, vote)
+    VALUES (?, ?, ?)
+    ON DUPLICATE KEY UPDATE vote = VALUES(vote)
+  `;
+
+  db.query(sql, [reviewId, user_id, type], (err) => {
+    if (err) {
+      console.error("VOTE ERROR:", err);
+      return res.json({ success:false, message:"Database error" });
+    }
+
+    res.json({ success:true });
+  });
+
+});
 module.exports = router;
