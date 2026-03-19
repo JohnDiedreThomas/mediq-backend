@@ -66,15 +66,14 @@ router.get("/:doctorId", (req, res) => {
   rc.comment AS admin_reply,
   au.name AS admin_name,
 
- COALESCE(SUM(CASE WHEN rv.vote = 'yes' THEN 1 ELSE 0 END),0) AS helpful_yes,
-COALESCE(SUM(CASE WHEN rv.vote = 'no' THEN 1 ELSE 0 END),0) AS helpful_no,
+ (SELECT COUNT(*) FROM review_votes WHERE review_id = r.id AND vote='yes') AS helpful_yes,
+(SELECT COUNT(*) FROM review_votes WHERE review_id = r.id AND vote='no') AS helpful_no,
 
-  (SELECT vote FROM review_votes 
-   WHERE review_id = r.id AND user_id = ?
-   LIMIT 1) AS user_vote
+(SELECT vote FROM review_votes 
+ WHERE review_id = r.id AND user_id = ?
+ LIMIT 1) AS user_vote
 
 FROM doctor_reviews r
-LEFT JOIN review_votes rv ON rv.review_id = r.id
 LEFT JOIN users u ON r.user_id = u.id
 
 -- ✅ ONLY ADMIN REPLIES
@@ -94,7 +93,6 @@ AND rc.id = (
 LEFT JOIN users au ON rc.user_id = au.id
 
 WHERE r.doctor_id = ?
-GROUP BY r.id
 ORDER BY r.created_at DESC
   `;
 
