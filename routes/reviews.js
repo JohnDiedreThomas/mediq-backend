@@ -9,7 +9,7 @@ router.post("/", (req, res) => {
   console.log("🔥 Review request received:", req.body);
 
   const user_id = Number(req.headers["x-user-id"]); // ✅ GET FROM HEADER
-  const { doctor_id, rating } = req.body;
+  const { doctor_id, rating, comment } = req.body;
 
   if (!doctor_id || !user_id || !rating) {
     return res.json({ success: false, message: "Missing fields" });
@@ -25,13 +25,13 @@ router.post("/", (req, res) => {
 
   const sql = `
     INSERT INTO doctor_reviews (doctor_id, user_id, rating, comment)
-    VALUES (?, ?, ?, NULL)
+    VALUES (?, ?, ?, ?)
     ON DUPLICATE KEY UPDATE
       rating = VALUES(rating),
       comment = VALUES(comment)
   `;
 
-  db.query(sql, [doctor_id, user_id, rating], (err) => {
+  db.query(sql, [doctor_id, user_id, rating, comment || null], (err) => {
     if (err) {
       console.error(err);
       return res.json({ success: false });
@@ -116,7 +116,7 @@ ORDER BY r.created_at DESC
 router.put("/:id", (req, res) => {
 
   const reviewId = parseInt(req.params.id);
-  const { rating } = req.body;
+  const { rating, comment } = req.body;
 
   if (
     !Number.isInteger(Number(rating)) ||
@@ -128,11 +128,11 @@ router.put("/:id", (req, res) => {
 
   const sql = `
     UPDATE doctor_reviews
-    SET rating = ?
+   SET rating = ?, comment = ?
     WHERE id = ? AND user_id = ?
   `;
 
-  db.query(sql, [rating, reviewId, user_id], (err, result) => {
+  db.query(sql, [rating, comment || null, reviewId, user_id], (err, result) => {
 
     if (err) {
       console.error(err);
