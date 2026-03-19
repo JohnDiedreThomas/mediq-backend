@@ -51,7 +51,7 @@ router.get("/:doctorId", (req, res) => {
     return res.json({ success:false, message:"Invalid doctor ID" });
   }
   const user_id = Number(req.headers["x-user-id"]) || 0;
-
+  console.log("HEADER USER ID:", user_id);
   const sql = `
     SELECT 
   r.id,
