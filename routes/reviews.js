@@ -85,7 +85,6 @@ LIMIT 1
     LEFT JOIN users au ON rc.user_id = au.id
 
     WHERE r.doctor_id = ?
-AND rc.comment IS NOT NULL
     ORDER BY r.created_at DESC
   `;
 
@@ -230,7 +229,7 @@ router.post("/:reviewId/comments", (req, res) => {
         return res.json({ success: false });
       }
 
-      if (userResult[0].role !== "admin") {
+      if (!userResult[0] || userResult[0].role?.toLowerCase().trim() !== "admin") {
         return res.json({
           success: false,
           message: "Only admin can reply"
