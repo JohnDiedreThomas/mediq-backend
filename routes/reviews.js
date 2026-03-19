@@ -58,6 +58,7 @@ router.get("/:doctorId", (req, res) => {
   r.user_id,
   r.doctor_id,
   r.rating,
+  r.comment,
   r.created_at,
   r.updated_at,
   IFNULL(u.name, 'Patient') AS patient_name,
