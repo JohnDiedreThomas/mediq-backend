@@ -36,30 +36,35 @@ router.post("/", (req, res) => {
    GET REVIEWS BY DOCTOR
 ===================== */
 router.get("/:doctorId", (req, res) => {
+
   const doctorId = parseInt(req.params.doctorId);
+  const user_id = req.headers["x-user-id"]; // ✅ ADD THIS
 
   const sql = `
-   SELECT 
-  r.*, 
-  IFNULL(u.name, 'Patient') AS patient_name,
+    SELECT 
+      r.*, 
+      IFNULL(u.name, 'Patient') AS patient_name,
 
-  rc.comment AS admin_reply,
-  au.name AS admin_name,
+      rc.comment AS admin_reply,
+      au.name AS admin_name,
 
-  (SELECT COUNT(*) FROM review_votes WHERE review_id = r.id AND vote='yes') AS helpful_yes,
-  (SELECT COUNT(*) FROM review_votes WHERE review_id = r.id AND vote='no') AS helpful_no
+      (SELECT COUNT(*) FROM review_votes WHERE review_id = r.id AND vote='yes') AS helpful_yes,
+      (SELECT COUNT(*) FROM review_votes WHERE review_id = r.id AND vote='no') AS helpful_no,
 
-FROM doctor_reviews r
-LEFT JOIN users u ON r.user_id = u.id
+      (SELECT vote FROM review_votes 
+       WHERE review_id = r.id AND user_id = ?
+       LIMIT 1) AS user_vote
 
-LEFT JOIN review_comments rc ON rc.review_id = r.id
-LEFT JOIN users au ON rc.user_id = au.id
+    FROM doctor_reviews r
+    LEFT JOIN users u ON r.user_id = u.id
+    LEFT JOIN review_comments rc ON rc.review_id = r.id
+    LEFT JOIN users au ON rc.user_id = au.id
 
-WHERE r.doctor_id = ?
-ORDER BY r.created_at DESC
+    WHERE r.doctor_id = ?
+    ORDER BY r.created_at DESC
   `;
 
-  db.query(sql, [doctorId], (err, results) => {
+  db.query(sql, [user_id, doctorId], (err, results) => { // ✅ FIXED
     if (err) {
       console.error(err);
       return res.json({ success: false });
@@ -70,6 +75,7 @@ ORDER BY r.created_at DESC
       reviews: results,
     });
   });
+
 });
 
 /* =====================
