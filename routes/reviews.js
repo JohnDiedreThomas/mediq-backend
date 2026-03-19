@@ -9,7 +9,7 @@ router.post("/", (req, res) => {
   console.log("🔥 Review request received:", req.body);
 
   const user_id = Number(req.headers["x-user-id"]); // ✅ GET FROM HEADER
-  const { doctor_id, rating, comment } = req.body;
+  const { doctor_id, rating } = req.body;
 
   if (!doctor_id || !user_id || !rating) {
     return res.json({ success: false, message: "Missing fields" });
@@ -25,13 +25,13 @@ router.post("/", (req, res) => {
 
   const sql = `
     INSERT INTO doctor_reviews (doctor_id, user_id, rating, comment)
-    VALUES (?, ?, ?, ?)
+    VALUES (?, ?, ?, NULL)
     ON DUPLICATE KEY UPDATE
       rating = VALUES(rating),
       comment = VALUES(comment)
   `;
 
-  db.query(sql, [doctor_id, user_id, rating, comment || null], (err) => {
+  db.query(sql, [doctor_id, user_id, rating], (err) => {
     if (err) {
       console.error(err);
       return res.json({ success: false });
@@ -50,11 +50,16 @@ router.get("/:doctorId", (req, res) => {
   if (isNaN(doctorId)) {
     return res.json({ success:false, message:"Invalid doctor ID" });
   }
-  const user_id = req.headers["x-user-id"] || 0;
+  const user_id = Number(req.headers["x-user-id"]) || 0;
 
   const sql = `
     SELECT 
-      r.*, 
+  r.id,
+  r.user_id,
+  r.doctor_id,
+  r.rating,
+  r.created_at,
+  r.updated_at,
       IFNULL(u.name, 'Patient') AS patient_name,
 
       rc.comment AS admin_reply,
@@ -80,6 +85,7 @@ LIMIT 1
     LEFT JOIN users au ON rc.user_id = au.id
 
     WHERE r.doctor_id = ?
+AND rc.comment IS NOT NULL
     ORDER BY r.created_at DESC
   `;
 
@@ -103,7 +109,7 @@ LIMIT 1
 router.put("/:id", (req, res) => {
 
   const reviewId = parseInt(req.params.id);
-  const { rating, comment } = req.body;
+  const { rating } = req.body;
 
   if (
     !Number.isInteger(Number(rating)) ||
@@ -111,15 +117,15 @@ router.put("/:id", (req, res) => {
   ) {
     return res.json({ success:false, message:"Invalid rating" });
   }
-  const user_id = req.headers["x-user-id"];
+  const user_id = Number(req.headers["x-user-id"]);
 
   const sql = `
     UPDATE doctor_reviews
-    SET rating = ?, comment = ?
+    SET rating = ?
     WHERE id = ? AND user_id = ?
   `;
 
-  db.query(sql, [rating, comment || null, reviewId, user_id], (err, result) => {
+  db.query(sql, [rating, reviewId, user_id], (err, result) => {
 
     if (err) {
       console.error(err);
@@ -149,7 +155,7 @@ router.delete("/:id", (req, res) => {
   if (isNaN(reviewId)) {
     return res.json({ success:false, message:"Invalid review ID" });
   }
-  const user_id = req.headers["x-user-id"];
+  const user_id = Number(req.headers["x-user-id"]);
 
   if (!user_id) {
     return res.json({ success: false, message: "Missing user ID" });
@@ -208,7 +214,7 @@ router.post("/:reviewId/comments", (req, res) => {
     return res.json({ success:false, message:"Invalid review ID" });
   }
   const { comment } = req.body;
-  const user_id = req.headers["x-user-id"] || 0;
+  const user_id = Number(req.headers["x-user-id"]) || 0;
 
   if (!comment || !user_id) {
     return res.json({ success: false, message: "Missing fields" });
@@ -309,7 +315,7 @@ router.get("/:reviewId/comments", (req, res) => {
 router.delete("/comments/:id", (req, res) => {
 
   const commentId = parseInt(req.params.id);
-  const user_id = req.headers["x-user-id"] || 0;
+  const user_id = Number(req.headers["x-user-id"]) || 0;
 
   if (!user_id) {
     return res.json({ success: false, message: "Missing user ID" });
@@ -347,7 +353,7 @@ router.post("/:reviewId/vote", (req, res) => {
     return res.json({ success:false, message:"Invalid review ID" });
   }
   const { type } = req.body;
-  const user_id = req.headers["x-user-id"] || 0;
+  const user_id = Number(req.headers["x-user-id"]) || 0;
 
   if (!user_id || !type) {
     return res.json({ success:false });
