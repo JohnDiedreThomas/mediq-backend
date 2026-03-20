@@ -222,19 +222,55 @@ router.post("/:id/vote", (req, res) => {
     return res.json({ success:false, message:"Invalid input" });
   }
 
-  const sql = `
-    INSERT INTO review_votes (review_id, user_id, vote)
-    VALUES (?, ?, ?)
-    ON DUPLICATE KEY UPDATE vote = VALUES(vote)
+  // 🔍 Check if user already voted
+  const checkSql = `
+    SELECT vote FROM review_votes 
+    WHERE review_id = ? AND user_id = ?
   `;
 
-  db.query(sql, [reviewId, user_id, type], (err) => {
+  db.query(checkSql, [reviewId, user_id], (err, result) => {
+
     if (err) {
-      console.error("VOTE ERROR:", err);
-      return res.json({ success:false, message:"Database error" });
+      console.error(err);
+      return res.json({ success:false });
     }
 
-    res.json({ success:true });
+    // 🔁 IF SAME VOTE → REMOVE (UNSELECT)
+    if (result.length > 0 && result[0].vote === type) {
+
+      db.query(
+        "DELETE FROM review_votes WHERE review_id = ? AND user_id = ?",
+        [reviewId, user_id],
+        (err) => {
+          if (err) {
+            console.error(err);
+            return res.json({ success:false });
+          }
+
+          return res.json({ success:true, removed:true });
+        }
+      );
+
+    } else {
+
+      // ➕ INSERT OR UPDATE
+      const sql = `
+        INSERT INTO review_votes (review_id, user_id, vote)
+        VALUES (?, ?, ?)
+        ON DUPLICATE KEY UPDATE vote = VALUES(vote)
+      `;
+
+      db.query(sql, [reviewId, user_id, type], (err) => {
+        if (err) {
+          console.error(err);
+          return res.json({ success:false });
+        }
+
+        return res.json({ success:true });
+      });
+
+    }
+
   });
 
 });
