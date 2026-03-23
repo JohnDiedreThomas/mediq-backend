@@ -25,8 +25,9 @@ router.get("/", (req, res) => {
 
 /* ADD SERVICE */
 router.post("/", (req, res) => {
+  console.log("📥 BACKEND RECEIVED:", req.body);
   let { name, description, category } = req.body;
-
+  console.log("💾 INSERT CATEGORY:", category);
   if (!category || !category.trim()) {
     return res.json({ success: false, message: "Category required" });
   }
@@ -40,7 +41,7 @@ router.post("/", (req, res) => {
   name = name.trim();
   description = description?.trim() || null;
 
- 
+  console.log("💾 INSERT CATEGORY:", category);
   db.query(
     "INSERT INTO services (name, description, category, status) VALUES (?, ?, ?, 'active')",
     [name, description, category],
