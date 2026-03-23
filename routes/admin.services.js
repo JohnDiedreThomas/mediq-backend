@@ -25,7 +25,7 @@ router.get("/", (req, res) => {
 
 /* ADD SERVICE */
 router.post("/", (req, res) => {
-  let { name, description, price, category } = req.body;
+  let { name, description, category } = req.body;
 
   if (!category || !category.trim()) {
     return res.json({ success: false, message: "Category required" });
@@ -40,18 +40,10 @@ router.post("/", (req, res) => {
   name = name.trim();
   description = description?.trim() || null;
 
-  let parsedPrice;
-
-  if (price !== null && price !== undefined && price !== "") {
-    parsedPrice = parseFloat(price);
-  
-    if (isNaN(parsedPrice) || parsedPrice < 0) {
-      return res.json({ success: false, message: "Invalid price" });
-    }
-  }
+ 
   db.query(
-    "INSERT INTO services (name, description, price, category, status) VALUES (?, ?, ?, ?, 'active')",
-    [name, description, parsedPrice, category],
+    "INSERT INTO services (name, description, category, status) VALUES (?, ?, ?, 'active')",
+    [name, description, category],
     (err) => {
       if (err) {
         console.error("ADD SERVICE ERROR:", err);
@@ -70,7 +62,7 @@ router.put("/:id", (req, res) => {
   console.log("UPDATE BODY:", req.body);
 
   const { id } = req.params;
-  let { name, description, price, category, status } = req.body;
+  let { name, description, category, status } = req.body;
 
   if (!category || !category.trim()) {
     return res.json({ success: false, message: "Category required" });
@@ -85,20 +77,10 @@ router.put("/:id", (req, res) => {
   name = name.trim();
   description = description?.trim() || null;
 
-  // ✅ allow null price
-  const parsedPrice = Number(price);
-
-  if (isNaN(parsedPrice) || parsedPrice < 0) {
-    return res.json({ success: false, message: "Invalid price" });
-  }
-  
-  console.log("Incoming price:", price);
-  console.log("Parsed price:", parsedPrice);
-  console.log("Updating service price to:", parsedPrice);
   
   db.query(
-    "UPDATE services SET name=?, description=?, price=?, category=?, status=? WHERE id=?",
-    [name, description, parsedPrice, category, status || "active", id],
+    "UPDATE services SET name=?, description=?, category=?, status=? WHERE id=?",
+[name, description, category, status || "active", id],
     (err, result) => {
       if (err) {
         console.error("UPDATE SERVICE ERROR:", err);
