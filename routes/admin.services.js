@@ -27,6 +27,12 @@ router.get("/", (req, res) => {
 router.post("/", (req, res) => {
   let { name, description, price, category } = req.body;
 
+  if (!category || !category.trim()) {
+    return res.json({ success: false, message: "Category required" });
+  }
+  
+  category = category.trim().toLowerCase();
+
   if (!name || !name.trim()) {
     return res.json({ success: false, message: "Name required" });
   }
@@ -64,6 +70,12 @@ router.put("/:id", (req, res) => {
 
   const { id } = req.params;
   let { name, description, price, category, status } = req.body;
+  
+  if (!category || !category.trim()) {
+    return res.json({ success: false, message: "Category required" });
+  }
+  
+  category = category.trim().toLowerCase();
 
   if (!name || !name.trim()) {
     return res.json({ success: false, message: "Name required" });
