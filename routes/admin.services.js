@@ -29,13 +29,13 @@ router.post("/", (req, res) => {
   let { name, description, category } = req.body;
   console.log("💾 INSERT CATEGORY:", category);
   if (!category || !category.trim()) {
-    return res.json({ success: false, message: "Category required" });
+    return res.status(400).json({ success: false, message: "Category required" });
   }
   
   category = category.trim().toLowerCase();
 
   if (!name || !name.trim()) {
-    return res.json({ success: false, message: "Name required" });
+    return res.status(400).json({ success: false, message: "Name required" });
   }
 
   name = name.trim();
@@ -66,13 +66,13 @@ router.put("/:id", (req, res) => {
   let { name, description, category, status } = req.body;
 
   if (!category || !category.trim()) {
-    return res.json({ success: false, message: "Category required" });
+    return res.status(400).json({ success: false, message: "Category required" });
   }
   
   category = category.trim().toLowerCase();
 
   if (!name || !name.trim()) {
-    return res.json({ success: false, message: "Name required" });
+    return res.status(400).json({ success: false, message: "Name required" });
   }
 
   name = name.trim();
