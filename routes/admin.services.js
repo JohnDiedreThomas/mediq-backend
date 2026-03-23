@@ -65,12 +65,13 @@ router.post("/", (req, res) => {
 
 /* UPDATE SERVICE */
 router.put("/:id", (req, res) => {
+  console.log("UPDATE BODY:", req.body);
   console.log("🔥 UPDATE ROUTE HIT");
   console.log("UPDATE BODY:", req.body);
 
   const { id } = req.params;
   let { name, description, price, category, status } = req.body;
-  
+
   if (!category || !category.trim()) {
     return res.json({ success: false, message: "Category required" });
   }
