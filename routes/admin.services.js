@@ -25,7 +25,7 @@ router.get("/", (req, res) => {
 
 /* ADD SERVICE */
 router.post("/", (req, res) => {
-  let { name, description, price } = req.body;
+  let { name, description, price, category } = req.body;
 
   if (!name || !name.trim()) {
     return res.json({ success: false, message: "Name required" });
@@ -44,8 +44,8 @@ router.post("/", (req, res) => {
     }
   }
   db.query(
-    "INSERT INTO services (name, description, price, status) VALUES (?, ?, ?, 'active')",
-    [name, description, parsedPrice],
+    "INSERT INTO services (name, description, price, category, status) VALUES (?, ?, ?, ?, 'active')",
+    [name, description, parsedPrice, category],
     (err) => {
       if (err) {
         console.error("ADD SERVICE ERROR:", err);
@@ -63,7 +63,7 @@ router.put("/:id", (req, res) => {
   console.log("UPDATE BODY:", req.body);
 
   const { id } = req.params;
-  let { name, description, price, status } = req.body;
+  let { name, description, price, category, status } = req.body;
 
   if (!name || !name.trim()) {
     return res.json({ success: false, message: "Name required" });
@@ -84,8 +84,8 @@ router.put("/:id", (req, res) => {
   console.log("Updating service price to:", parsedPrice);
   
   db.query(
-    "UPDATE services SET name=?, description=?, price=?, status=? WHERE id=?",
-    [name, description, parsedPrice, status || "active", id],
+    "UPDATE services SET name=?, description=?, price=?, category=?, status=? WHERE id=?",
+    [name, description, parsedPrice, category, status || "active", id],
     (err, result) => {
       if (err) {
         console.error("UPDATE SERVICE ERROR:", err);
