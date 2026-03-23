@@ -48,7 +48,10 @@ router.post("/", (req, res) => {
     (err) => {
       if (err) {
         console.error("ADD SERVICE ERROR:", err);
-        return res.json({ success: false });
+        return res.status(500).json({
+          success: false,
+          message: err.message || "Database error"
+        });
       }
 
       res.json({ success: true });
@@ -85,7 +88,10 @@ router.put("/:id", (req, res) => {
     (err, result) => {
       if (err) {
         console.error("UPDATE SERVICE ERROR:", err);
-        return res.json({ success: false });
+        return res.status(500).json({
+          success: false,
+          message: err.message || "Database error"
+        });
       }
       console.log("SQL RESULT:", result); // <-- ADD THIS
   
