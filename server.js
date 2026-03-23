@@ -116,9 +116,9 @@ app.set("io", io);
 server.listen(PORT, "0.0.0.0", () => {
   console.log(`🚀 Server running on port ${PORT}`);
   console.log("🧠 Realtime sockets enabled");
-
-  startReminderWorker();
-
-  runDailyCleanup();
-  setInterval(runDailyCleanup, 24 * 60 * 60 * 1000);
 });
+
+// ✅ MOVE THESE OUTSIDE
+startReminderWorker();
+runDailyCleanup();
+setInterval(runDailyCleanup, 24 * 60 * 60 * 1000);
