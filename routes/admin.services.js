@@ -26,25 +26,19 @@ router.get("/", (req, res) => {
 /* ADD SERVICE */
 router.post("/", (req, res) => {
   console.log("📥 BACKEND RECEIVED:", req.body);
-  let { name, description, category } = req.body;
-  console.log("💾 INSERT CATEGORY:", category);
-  if (!category || !category.trim()) {
-    return res.status(400).json({ success: false, message: "Category required" });
-  }
-  
-  category = category.trim().toLowerCase();
+  let { name, description } = req.body;
 
   if (!name || !name.trim()) {
     return res.status(400).json({ success: false, message: "Name required" });
   }
 
   name = name.trim();
-  description = description?.trim() || null;
+  description = (description || "").trim();
 
-  console.log("💾 INSERT CATEGORY:", category);
+
   db.query(
-    "INSERT INTO services (name, description, category, status) VALUES (?, ?, ?, 'active')",
-    [name, description, category],
+  "INSERT INTO services (name, description, status) VALUES (?, ?, 'active')",
+[name, description],
     (err) => {
       if (err) {
         console.error("ADD SERVICE ERROR:", err);
@@ -66,25 +60,19 @@ router.put("/:id", (req, res) => {
   console.log("UPDATE BODY:", req.body);
 
   const { id } = req.params;
-  let { name, description, category, status } = req.body;
-
-  if (!category || !category.trim()) {
-    return res.status(400).json({ success: false, message: "Category required" });
-  }
-  
-  category = category.trim().toLowerCase();
+  let { name, description, status } = req.body;
 
   if (!name || !name.trim()) {
     return res.status(400).json({ success: false, message: "Name required" });
   }
 
   name = name.trim();
-  description = description?.trim() || null;
+  description = (description || "").trim();
 
   
   db.query(
-    "UPDATE services SET name=?, description=?, category=?, status=? WHERE id=?",
-[name, description, category, status || "active", id],
+    "UPDATE services SET name=?, description=?, status=? WHERE id=?",
+[name, description, status || "active", id],
     (err, result) => {
       if (err) {
         console.error("UPDATE SERVICE ERROR:", err);
