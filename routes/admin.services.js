@@ -25,36 +25,32 @@ router.get("/", (req, res) => {
 
 /* ADD SERVICE */
 router.post("/", (req, res) => {
+  console.log("📥 BACKEND RECEIVED:", req.body);
   let { name, description, category } = req.body;
+  console.log("💾 INSERT CATEGORY:", category);
+  if (!category || !category.trim()) {
+    return res.status(400).json({ success: false, message: "Category required" });
+  }
+  
+  category = category.trim().toLowerCase();
 
-  name = (name || "").trim();
-  category = (category || "").trim().toLowerCase();
-  description = (description || "").trim();
-
-  if (!name) {
+  if (!name || !name.trim()) {
     return res.status(400).json({ success: false, message: "Name required" });
   }
 
-  if (!category) {
-    return res.status(400).json({ success: false, message: "Category required" });
-  }
+  name = name.trim();
+  description = description?.trim() || null;
 
+  console.log("💾 INSERT CATEGORY:", category);
   db.query(
     "INSERT INTO services (name, description, category, status) VALUES (?, ?, ?, 'active')",
     [name, description, category],
     (err) => {
       if (err) {
-        // 🔥 IMPORTANT (no more blind 500)
-        if (err.code === "ER_DUP_ENTRY") {
-          return res.status(400).json({
-            success: false,
-            message: "Service already exists",
-          });
-        }
-
+        console.error("ADD SERVICE ERROR:", err);
         return res.status(500).json({
           success: false,
-          message: err.message,
+          message: err.message || "Database error"
         });
       }
 
@@ -65,39 +61,47 @@ router.post("/", (req, res) => {
 
 /* UPDATE SERVICE */
 router.put("/:id", (req, res) => {
+  console.log("UPDATE BODY:", req.body);
+  console.log("🔥 UPDATE ROUTE HIT");
+  console.log("UPDATE BODY:", req.body);
+
   const { id } = req.params;
   let { name, description, category, status } = req.body;
 
-  name = (name || "").trim();
-  category = (category || "").trim().toLowerCase();
-  description = (description || "").trim();
+  if (!category || !category.trim()) {
+    return res.status(400).json({ success: false, message: "Category required" });
+  }
+  
+  category = category.trim().toLowerCase();
 
-  if (!name) {
+  if (!name || !name.trim()) {
     return res.status(400).json({ success: false, message: "Name required" });
   }
 
-  if (!category) {
-    return res.status(400).json({ success: false, message: "Category required" });
-  }
+  name = name.trim();
+  description = description?.trim() || null;
 
+  
   db.query(
     "UPDATE services SET name=?, description=?, category=?, status=? WHERE id=?",
-    [name, description, category, status || "active", id],
+[name, description, category, status || "active", id],
     (err, result) => {
       if (err) {
+        console.error("UPDATE SERVICE ERROR:", err);
         return res.status(500).json({
           success: false,
-          message: err.message,
+          message: err.message || "Database error"
         });
       }
-
+      console.log("SQL RESULT:", result); // <-- ADD THIS
+  
       if (result.affectedRows === 0) {
         return res.json({
           success: false,
           message: "No service updated — wrong ID",
         });
       }
-
+  
       res.json({ success: true });
     }
   );
