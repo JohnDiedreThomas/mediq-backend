@@ -33,7 +33,7 @@ router.get("/by-service/:serviceId", (req, res) => {
   const sql = `
     SELECT d.id, d.name, d.specialty, d.image
     FROM doctors d
-    JOIN services s ON s.category = d.specialty
+    JOIN services s ON LOWER(d.specialty) LIKE CONCAT('%', LOWER(s.category), '%')
     WHERE s.id = ?
       AND d.is_active = 1
   `;
@@ -81,7 +81,8 @@ router.get("/:id/services", (req, res) => {
   const sql = `
     SELECT s.id, s.name, s.image
     FROM services s
-    JOIN doctors d ON s.category = d.specialty
+    JOIN doctors d 
+ON LOWER(d.specialty) LIKE CONCAT('%', LOWER(s.category), '%')
     WHERE d.id = ?
   `;
 
