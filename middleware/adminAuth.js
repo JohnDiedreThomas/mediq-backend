@@ -1,8 +1,11 @@
 const db = require("../db");
 
 module.exports = (req, res, next) => {
-  const userId = req.headers["x-user-id"];
-
+  const userId =
+  req.headers["x-user-id"] || // old way (keep working)
+  req.headers["authorization"]?.split(" ")[1]; // new way
+  console.log("🔐 USER ID:", userId);
+  
   if (!userId) {
     return res.status(401).json({
       success: false,
