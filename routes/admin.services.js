@@ -45,7 +45,7 @@ router.post("/", (req, res) => {
   [name, description, category],
     (err) => {
       if (err) {
-        console.error("ADD SERVICE ERROR:", err);
+        console.error("🔥 FULL DB ERROR:", err);
         return res.status(500).json({
           success: false,
           message: err.message || "Database error"
@@ -72,12 +72,21 @@ router.put("/:id", (req, res) => {
 
   name = name.trim();
   description = (description || "").trim();
-  category = category?.toLowerCase().trim();
+  category = (category || "").toLowerCase().trim();
 
-  if (!["general", "therapy", "dental"].includes(category)) {
-    return res.status(400).json({ success: false, message: "Invalid category" });
-  }
-  
+if (!category) {
+  return res.status(400).json({
+    success: false,
+    message: "Category is required",
+  });
+}
+
+if (!["general", "therapy", "dental"].includes(category)) {
+  return res.status(400).json({
+    success: false,
+    message: "Invalid category",
+  });
+}
   db.query(
     "UPDATE services SET name=?, description=?, category=?, status=? WHERE id=?",
     [name, description, category, status || "active", id],
