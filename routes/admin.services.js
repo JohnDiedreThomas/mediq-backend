@@ -5,13 +5,6 @@ const adminAuth = require("../middleware/adminAuth");
 
 const upload = require("../middleware/uploadServiceCloudinary");
 
-const getCategory = (name) => {
-    const n = name.toLowerCase();
-  
-    if (n.includes("dental") || n.includes("tooth") || n.includes("oral")) return "dental";
-    if (n.includes("therapy")) return "therapy";
-    return "general";
-  };
 /* 🔒 Protect all admin service routes */
 router.use(adminAuth);
 
@@ -22,7 +15,10 @@ router.get("/", (req, res) => {
     (err, rows) => {
       if (err) {
         console.error("ADMIN SERVICES ERROR:", err);
-        return res.status(500).json({ success: false });
+        return res.status(500).json({
+            success: false,
+            message: "Image upload failed",
+          });
       }
 
       res.json({ success: true, services: rows });
@@ -36,16 +32,18 @@ router.post("/", (req, res) => {
   let { name, description } = req.body;
 
   if (!name || !name.trim()) {
-    return res.status(400).json({ success: false, message: "Name required" });
+    return res.json({
+        success: false,
+        message: "Missing fields",
+      });
   }
 
   name = name.trim();
   description = (description || "").trim();
-  const category = getCategory(name);
 
   db.query(
-    "INSERT INTO services (name, description, category, status) VALUES (?, ?, ?, 'active')",
-    [name, description, category],
+    "INSERT INTO services (name, description, status) VALUES (?, ?, 'active')",
+[name, description],
     (err) => {
       if (err) {
         console.error("💥 ADD ERROR FULL:", err);
@@ -77,11 +75,10 @@ router.put("/:id", (req, res) => {
 
   name = name.trim();
   description = (description || "").trim();
-  const category = getCategory(name);
   
   db.query(
-    "UPDATE services SET name=?, description=?, category=?, status=? WHERE id=?",
-    [name, description, category, status || "active", id],
+    "UPDATE services SET name=?, description=?, status=? WHERE id=?",
+[name, description, status || "active", id],
     (err, result) => {
       if (err) {
         console.error("💥 UPDATE ERROR FULL:", err);
@@ -142,7 +139,10 @@ router.put("/:id/status", (req, res) => {
   const { status } = req.body;
 
   if (!["active", "inactive"].includes(status)) {
-    return res.json({ success: false });
+    return res.json({
+        success: false,
+        message: "Invalid status",
+      });
   }
 
   db.query(
@@ -151,7 +151,10 @@ router.put("/:id/status", (req, res) => {
     (err) => {
       if (err) {
         console.error("STATUS ERROR:", err);
-        return res.json({ success: false });
+        return res.json({
+            success: false,
+            message: "Status update failed",
+          });
       }
 
       res.json({ success: true });
