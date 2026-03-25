@@ -169,7 +169,10 @@ router.delete("/:id", (req, res) => {
     (err, rows) => {
       if (err) {
         console.error("SERVICE CHECK ERROR:", err);
-        return res.status(500).json({ success: false });
+        return res.status(500).json({
+            success: false,
+            message: "Something went wrong"
+          });
       }
 
       if (rows[0].count > 0) {
@@ -183,7 +186,10 @@ router.delete("/:id", (req, res) => {
       db.query("DELETE FROM services WHERE id=?", [id], (err, result) => {
         if (err) {
           console.error("DELETE SERVICE ERROR:", err);
-          return res.status(500).json({ success: false });
+          return res.status(500).json({
+            success: false,
+            message: "Something went wrong"
+          });
         }
 
         res.json({ success: true });
