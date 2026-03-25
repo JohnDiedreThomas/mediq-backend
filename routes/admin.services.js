@@ -59,9 +59,9 @@ router.post("/", (req, res) => {
 
 /* UPDATE SERVICE */
 router.put("/:id", (req, res) => {
-  console.log("UPDATE BODY:", req.body);
-  console.log("🔥 UPDATE ROUTE HIT");
-  console.log("UPDATE BODY:", req.body);
+  console.error("🔥 UPDATE ROUTE HIT");
+  console.error("🔥 UPDATE BODY:", req.body);
+
 
   const { id } = req.params;
   let { name, description, status, category } = req.body;
@@ -92,7 +92,7 @@ if (!["general", "therapy", "dental"].includes(category)) {
     [name, description, category, status || "active", id],
     (err, result) => {
       if (err) {
-        console.error("UPDATE SERVICE ERROR:", err);
+        console.error("🔥 UPDATE SERVICE ERROR:", err);
         return res.status(500).json({
           success: false,
           message: err.message || "Database error"
