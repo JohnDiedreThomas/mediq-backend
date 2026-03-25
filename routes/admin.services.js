@@ -2,12 +2,13 @@ const express = require("express");
 const router = express.Router();
 const db = require("../db");
 const adminAuth = require("../middleware/adminAuth");
+
 const upload = require("../middleware/uploadServiceCloudinary");
 
 /* 🔒 Protect all admin service routes */
 router.use(adminAuth);
 
-/* GET ALL SERVICESs */
+/* GET ALL SERVICES */
 router.get("/", (req, res) => {
   db.query(
     "SELECT * FROM services ORDER BY created_at DESC",
@@ -25,7 +26,7 @@ router.get("/", (req, res) => {
 /* ADD SERVICE */
 router.post("/", (req, res) => {
   console.log("📥 BACKEND RECEIVED:", req.body);
-  let { name, description, category } = req.body;
+  let { name, description } = req.body;
 
   if (!name || !name.trim()) {
     return res.status(400).json({ success: false, message: "Name required" });
@@ -33,26 +34,14 @@ router.post("/", (req, res) => {
 
   name = name.trim();
   description = (description || "").trim();
-  if (!category) {
-    console.error("❌ CATEGORY IS UNDEFINED:", req.body);
-    return res.status(400).json({
-      success: false,
-      message: "Category missing",
-    });
-  }
-  
-  category = category.toLowerCase().trim();
-  
-  if (!["general", "therapy", "dental"].includes(category)) {
-    return res.status(400).json({ success: false, message: "Invalid category" });
-  }
+
 
   db.query(
-  "INSERT INTO services (name, description, category, status) VALUES (?, ?, ?, 'active')",
-  [name, description, category],
+  "INSERT INTO services (name, description, status) VALUES (?, ?, 'active')",
+[name, description],
     (err) => {
       if (err) {
-        console.error("🔥 FULL DB ERROR:", err);
+        console.error("ADD SERVICE ERROR:", err);
         return res.status(500).json({
           success: false,
           message: err.message || "Database error"
@@ -66,12 +55,12 @@ router.post("/", (req, res) => {
 
 /* UPDATE SERVICE */
 router.put("/:id", (req, res) => {
-  console.error("🔥 UPDATE ROUTE HIT");
-  console.error("🔥 UPDATE BODY:", req.body);
-
+  console.log("UPDATE BODY:", req.body);
+  console.log("🔥 UPDATE ROUTE HIT");
+  console.log("UPDATE BODY:", req.body);
 
   const { id } = req.params;
-  let { name, description, status, category } = req.body;
+  let { name, description, status } = req.body;
 
   if (!name || !name.trim()) {
     return res.status(400).json({ success: false, message: "Name required" });
@@ -79,27 +68,14 @@ router.put("/:id", (req, res) => {
 
   name = name.trim();
   description = (description || "").trim();
-  category = (category || "").toLowerCase().trim();
 
-if (!category) {
-  return res.status(400).json({
-    success: false,
-    message: "Category is required",
-  });
-}
-
-if (!["general", "therapy", "dental"].includes(category)) {
-  return res.status(400).json({
-    success: false,
-    message: "Invalid category",
-  });
-}
+  
   db.query(
-    "UPDATE services SET name=?, description=?, category=?, status=? WHERE id=?",
-    [name, description, category, status || "active", id],
+    "UPDATE services SET name=?, description=?, status=? WHERE id=?",
+[name, description, status || "active", id],
     (err, result) => {
       if (err) {
-        console.error("🔥 UPDATE SERVICE ERROR:", err);
+        console.error("UPDATE SERVICE ERROR:", err);
         return res.status(500).json({
           success: false,
           message: err.message || "Database error"
