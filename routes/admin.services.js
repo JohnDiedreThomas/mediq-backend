@@ -48,11 +48,12 @@ router.post("/", (req, res) => {
     [name, description, category],
     (err) => {
       if (err) {
-        console.error("ADD SERVICE ERROR:", err);
-        return res.status(500).json({
-          success: false,
-          message: err.message || "Database error"
-        });
+        console.error("💥 ADD ERROR FULL:", err);
+
+return res.status(500).json({
+  success: false,
+  message: err.sqlMessage || err.message || "Database error"
+});
       }
 
       res.json({ success: true });
@@ -83,11 +84,12 @@ router.put("/:id", (req, res) => {
     [name, description, category, status || "active", id],
     (err, result) => {
       if (err) {
-        console.error("UPDATE SERVICE ERROR:", err);
-        return res.status(500).json({
-          success: false,
-          message: err.message || "Database error"
-        });
+        console.error("💥 UPDATE ERROR FULL:", err);
+
+return res.status(500).json({
+  success: false,
+  message: err.sqlMessage || err.message || "Database error"
+});
       }
       console.log("SQL RESULT:", result); // <-- ADD THIS
   
