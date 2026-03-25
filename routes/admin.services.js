@@ -34,7 +34,15 @@ router.post("/", (req, res) => {
 
   name = name.trim();
   description = (description || "").trim();
-  category = category?.toLowerCase().trim();
+  if (!category) {
+    console.error("❌ CATEGORY IS UNDEFINED:", req.body);
+    return res.status(400).json({
+      success: false,
+      message: "Category missing",
+    });
+  }
+  
+  category = category.toLowerCase().trim();
   
   if (!["general", "therapy", "dental"].includes(category)) {
     return res.status(400).json({ success: false, message: "Invalid category" });
