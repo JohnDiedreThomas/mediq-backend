@@ -41,13 +41,13 @@ router.post("/", (req, res) => {
     (err) => {
       if (err) {
         console.error("ADD SERVICE ERROR:", err);
-        return res.json({
+        return res.status(200).json({
             success: false,
             message: err.sqlMessage || err.message
           });
       }
 
-      res.json({ success: true });
+      return res.status(200).json({ success: true });
     }
   );
 });
@@ -127,9 +127,9 @@ router.put("/:id/status", (req, res) => {
 
   if (!["active", "inactive"].includes(status)) {
     return res.json({
-        success: false,
-        message: err.sqlMessage || err.message
-      });
+      success: false,
+      message: "Invalid status"
+    });
   }
 
   db.query(
