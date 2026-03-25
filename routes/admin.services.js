@@ -15,10 +15,7 @@ router.get("/", (req, res) => {
     (err, rows) => {
       if (err) {
         console.error("ADMIN SERVICES ERROR:", err);
-        return res.status(500).json({
-            success: false,
-            message: "Image upload failed",
-          });
+        return res.status(500).json({ success: false });
       }
 
       res.json({ success: true, services: rows });
@@ -26,32 +23,34 @@ router.get("/", (req, res) => {
   );
 });
 
-/* ADD SERVICE */
+/* ADD SERVICE (NO CATEGORY) */
 router.post("/", (req, res) => {
-  console.log("📥 BACKEND RECEIVED:", req.body);
-  let { name, description } = req.body;
+  let { name, description, price } = req.body;
 
   if (!name || !name.trim()) {
-    return res.json({
-        success: false,
-        message: "Missing fields",
-      });
+    return res.json({ success: false, message: "Name required" });
   }
 
   name = name.trim();
-  description = (description || "").trim();
+  description = description?.trim() || null;
+
+  let parsedPrice;
+
+  if (price !== null && price !== undefined && price !== "") {
+    parsedPrice = parseFloat(price);
+
+    if (isNaN(parsedPrice) || parsedPrice < 0) {
+      return res.json({ success: false, message: "Invalid price" });
+    }
+  }
 
   db.query(
-    "INSERT INTO services (name, description, status) VALUES (?, ?, 'active')",
-[name, description],
+    "INSERT INTO services (name, description, price, status) VALUES (?, ?, ?, 'active')",
+    [name, description, parsedPrice],
     (err) => {
       if (err) {
-        console.error("💥 ADD ERROR FULL:", err);
-
-return res.status(500).json({
-  success: false,
-  message: err.sqlMessage || err.message || "Database error"
-});
+        console.error("ADD SERVICE ERROR:", err);
+        return res.json({ success: false });
       }
 
       res.json({ success: true });
@@ -59,48 +58,45 @@ return res.status(500).json({
   );
 });
 
-/* UPDATE SERVICE */
+/* UPDATE SERVICE (NO CATEGORY) */
 router.put("/:id", (req, res) => {
-  console.log("UPDATE BODY:", req.body);
-  console.log("🔥 UPDATE ROUTE HIT");
-  console.log("UPDATE BODY:", req.body);
-
   const { id } = req.params;
-  let { name, description, status } = req.body;
-
+  let { name, description, price, status } = req.body;
 
   if (!name || !name.trim()) {
-    return res.status(400).json({ success: false, message: "Name required" });
+    return res.json({ success: false, message: "Name required" });
   }
 
   name = name.trim();
-  description = (description || "").trim();
-  
+  description = description?.trim() || null;
+
+  const parsedPrice = Number(price);
+
+  if (isNaN(parsedPrice) || parsedPrice < 0) {
+    return res.json({ success: false, message: "Invalid price" });
+  }
+
   db.query(
-    "UPDATE services SET name=?, description=?, status=? WHERE id=?",
-[name, description, status || "active", id],
+    "UPDATE services SET name=?, description=?, price=?, status=? WHERE id=?",
+    [name, description, parsedPrice, status || "active", id],
     (err, result) => {
       if (err) {
-        console.error("💥 UPDATE ERROR FULL:", err);
-
-return res.status(500).json({
-  success: false,
-  message: err.sqlMessage || err.message || "Database error"
-});
+        console.error("UPDATE SERVICE ERROR:", err);
+        return res.json({ success: false });
       }
-      console.log("SQL RESULT:", result); // <-- ADD THIS
-  
+
       if (result.affectedRows === 0) {
         return res.json({
           success: false,
           message: "No service updated — wrong ID",
         });
       }
-  
+
       res.json({ success: true });
     }
   );
 });
+
 /* 📸 UPLOAD SERVICE IMAGE */
 router.post("/:id/image", upload.single("image"), (req, res) => {
   try {
@@ -139,10 +135,7 @@ router.put("/:id/status", (req, res) => {
   const { status } = req.body;
 
   if (!["active", "inactive"].includes(status)) {
-    return res.json({
-        success: false,
-        message: "Invalid status",
-      });
+    return res.json({ success: false });
   }
 
   db.query(
@@ -151,10 +144,7 @@ router.put("/:id/status", (req, res) => {
     (err) => {
       if (err) {
         console.error("STATUS ERROR:", err);
-        return res.json({
-            success: false,
-            message: "Status update failed",
-          });
+        return res.json({ success: false });
       }
 
       res.json({ success: true });
@@ -172,10 +162,7 @@ router.delete("/:id", (req, res) => {
     (err, rows) => {
       if (err) {
         console.error("SERVICE CHECK ERROR:", err);
-        return res.status(500).json({
-            success: false,
-            message: "Something went wrong"
-          });
+        return res.status(500).json({ success: false });
       }
 
       if (rows[0].count > 0) {
@@ -186,13 +173,10 @@ router.delete("/:id", (req, res) => {
         });
       }
 
-      db.query("DELETE FROM services WHERE id=?", [id], (err, result) => {
+      db.query("DELETE FROM services WHERE id=?", [id], (err) => {
         if (err) {
           console.error("DELETE SERVICE ERROR:", err);
-          return res.status(500).json({
-            success: false,
-            message: "Something went wrong"
-          });
+          return res.status(500).json({ success: false });
         }
 
         res.json({ success: true });
