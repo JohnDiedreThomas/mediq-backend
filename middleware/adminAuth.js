@@ -20,7 +20,15 @@ module.exports = (req, res, next) => {
   `;
 
   db.query(sql, [userId], (err, rows) => {
-    if (err || rows.length === 0) {
+    if (err) {
+      console.error("🔥 AUTH DB ERROR:", err);
+      return res.status(500).json({
+        success: false,
+        message: "Auth database error",
+      });
+    }
+    
+    if (rows.length === 0) {
       return res.status(401).json({
         success: false,
         message: "Invalid user",
