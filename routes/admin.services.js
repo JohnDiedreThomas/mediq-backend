@@ -7,7 +7,7 @@ const upload = require("../middleware/uploadServiceCloudinary");
 /* 🔒 Protect all admin service routes */
 router.use(adminAuth);
 
-/* GET ALL SERVICES */
+/* GET ALL SERVICESs */
 router.get("/", (req, res) => {
   db.query(
     "SELECT * FROM services ORDER BY created_at DESC",
