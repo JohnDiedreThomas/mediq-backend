@@ -5,6 +5,13 @@ const adminAuth = require("../middleware/adminAuth");
 
 const upload = require("../middleware/uploadServiceCloudinary");
 
+const getCategory = (name) => {
+    const n = name.toLowerCase();
+  
+    if (n.includes("dental") || n.includes("tooth") || n.includes("oral")) return "dental";
+    if (n.includes("therapy")) return "therapy";
+    return "general";
+  };
 /* 🔒 Protect all admin service routes */
 router.use(adminAuth);
 
@@ -26,7 +33,7 @@ router.get("/", (req, res) => {
 /* ADD SERVICE */
 router.post("/", (req, res) => {
   console.log("📥 BACKEND RECEIVED:", req.body);
-  let { name, description, category } = req.body;
+  let { name, description } = req.body;
 
   if (!name || !name.trim()) {
     return res.status(400).json({ success: false, message: "Name required" });
@@ -34,7 +41,7 @@ router.post("/", (req, res) => {
 
   name = name.trim();
   description = (description || "").trim();
-
+  const category = getCategory(name);
 
   db.query(
     "INSERT INTO services (name, description, category, status) VALUES (?, ?, ?, 'active')",
@@ -60,7 +67,7 @@ router.put("/:id", (req, res) => {
   console.log("UPDATE BODY:", req.body);
 
   const { id } = req.params;
-  let { name, description, category, status } = req.body;
+  let { name, description, status } = req.body;
 
 
   if (!name || !name.trim()) {
@@ -69,7 +76,7 @@ router.put("/:id", (req, res) => {
 
   name = name.trim();
   description = (description || "").trim();
-
+  const category = getCategory(name);
   
   db.query(
     "UPDATE services SET name=?, description=?, category=?, status=? WHERE id=?",
