@@ -2,7 +2,6 @@ const express = require("express");
 const router = express.Router();
 const db = require("../db");
 const adminAuth = require("../middleware/adminAuth");
-
 const upload = require("../middleware/uploadServiceCloudinary");
 
 /* 🔒 Protect all admin service routes */
