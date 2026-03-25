@@ -25,7 +25,7 @@ router.get("/", (req, res) => {
 
 /* ADD SERVICE (NO CATEGORY) */
 router.post("/", (req, res) => {
-  let { name, description, price } = req.body;
+    let { name, description } = req.body;
 
   if (!name || !name.trim()) {
     return res.json({ success: false, message: "Name required" });
@@ -34,19 +34,10 @@ router.post("/", (req, res) => {
   name = name.trim();
   description = description?.trim() || null;
 
-  let parsedPrice;
-
-  if (price !== null && price !== undefined && price !== "") {
-    parsedPrice = parseFloat(price);
-
-    if (isNaN(parsedPrice) || parsedPrice < 0) {
-      return res.json({ success: false, message: "Invalid price" });
-    }
-  }
 
   db.query(
-    "INSERT INTO services (name, description, price, status) VALUES (?, ?, ?, 'active')",
-    [name, description, parsedPrice],
+    "INSERT INTO services (name, description, status) VALUES (?, ?, 'active')",
+[name, description],
     (err) => {
       if (err) {
         console.error("ADD SERVICE ERROR:", err);
@@ -61,7 +52,7 @@ router.post("/", (req, res) => {
 /* UPDATE SERVICE (NO CATEGORY) */
 router.put("/:id", (req, res) => {
   const { id } = req.params;
-  let { name, description, price, status } = req.body;
+  let { name, description, status } = req.body;
 
   if (!name || !name.trim()) {
     return res.json({ success: false, message: "Name required" });
@@ -70,15 +61,9 @@ router.put("/:id", (req, res) => {
   name = name.trim();
   description = description?.trim() || null;
 
-  const parsedPrice = Number(price);
-
-  if (isNaN(parsedPrice) || parsedPrice < 0) {
-    return res.json({ success: false, message: "Invalid price" });
-  }
-
   db.query(
-    "UPDATE services SET name=?, description=?, price=?, status=? WHERE id=?",
-    [name, description, parsedPrice, status || "active", id],
+    "UPDATE services SET name=?, description=?, status=? WHERE id=?",
+[name, description, status || "active", id],
     (err, result) => {
       if (err) {
         console.error("UPDATE SERVICE ERROR:", err);
