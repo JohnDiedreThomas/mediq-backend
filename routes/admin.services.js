@@ -41,7 +41,10 @@ router.post("/", (req, res) => {
     (err) => {
       if (err) {
         console.error("ADD SERVICE ERROR:", err);
-        return res.json({ success: false });
+        return res.json({
+            success: false,
+            message: err.sqlMessage || err.message
+          });
       }
 
       res.json({ success: true });
@@ -67,7 +70,10 @@ router.put("/:id", (req, res) => {
     (err, result) => {
       if (err) {
         console.error("UPDATE SERVICE ERROR:", err);
-        return res.json({ success: false });
+        return res.json({
+            success: false,
+            message: err.sqlMessage || err.message
+          });
       }
 
       if (result.affectedRows === 0) {
@@ -120,7 +126,10 @@ router.put("/:id/status", (req, res) => {
   const { status } = req.body;
 
   if (!["active", "inactive"].includes(status)) {
-    return res.json({ success: false });
+    return res.json({
+        success: false,
+        message: err.sqlMessage || err.message
+      });
   }
 
   db.query(
@@ -129,7 +138,10 @@ router.put("/:id/status", (req, res) => {
     (err) => {
       if (err) {
         console.error("STATUS ERROR:", err);
-        return res.json({ success: false });
+        return res.json({
+            success: false,
+            message: err.sqlMessage || err.message
+          });
       }
 
       res.json({ success: true });
