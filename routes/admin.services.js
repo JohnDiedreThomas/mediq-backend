@@ -42,7 +42,8 @@ router.post("/", (req, res) => {
   description = description?.trim() || null;
 
   const category = getCategory(name); // 🔥 ADD THIS
-
+  console.log("🔥 CATEGORY GENERATED:", category);
+  
   db.query(
     "INSERT INTO services (name, description, category, status) VALUES (?, ?, ?, 'active')",
     [name, description, category],
