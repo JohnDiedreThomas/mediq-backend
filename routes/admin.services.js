@@ -5,6 +5,13 @@ const adminAuth = require("../middleware/adminAuth");
 
 const upload = require("../middleware/uploadServiceCloudinary");
 
+const getCategory = (name) => {
+  const n = name.toLowerCase();
+
+  if (n.includes("tooth") || n.includes("dental") || n.includes("oral")) return "dental";
+  if (n.includes("therapy") || n.includes("massage")) return "therapy";
+  return "general";
+};
 /* 🔒 Protect all admin service routes */
 router.use(adminAuth);
 
@@ -25,7 +32,7 @@ router.get("/", (req, res) => {
 
 /* ADD SERVICE (NO CATEGORY) */
 router.post("/", (req, res) => {
-    let { name, description } = req.body;
+  let { name, description } = req.body;
 
   if (!name || !name.trim()) {
     return res.json({ success: false, message: "Name required" });
@@ -34,17 +41,18 @@ router.post("/", (req, res) => {
   name = name.trim();
   description = description?.trim() || null;
 
+  const category = getCategory(name); // 🔥 ADD THIS
 
   db.query(
-    "INSERT INTO services (name, description, status) VALUES (?, ?, 'active')",
-[name, description],
+    "INSERT INTO services (name, description, category, status) VALUES (?, ?, ?, 'active')",
+    [name, description, category],
     (err) => {
       if (err) {
         console.error("ADD SERVICE ERROR:", err);
         return res.status(200).json({
-            success: false,
-            message: err.sqlMessage || err.message
-          });
+          success: false,
+          message: err.sqlMessage || err.message
+        });
       }
 
       return res.status(200).json({ success: true });
@@ -64,16 +72,18 @@ router.put("/:id", (req, res) => {
   name = name.trim();
   description = description?.trim() || null;
 
+  const category = getCategory(name); // 🔥 ADD THIS
+
   db.query(
-    "UPDATE services SET name=?, description=?, status=? WHERE id=?",
-[name, description, status || "active", id],
+    "UPDATE services SET name=?, description=?, category=?, status=? WHERE id=?",
+    [name, description, category, status || "active", id],
     (err, result) => {
       if (err) {
         console.error("UPDATE SERVICE ERROR:", err);
         return res.json({
-            success: false,
-            message: err.sqlMessage || err.message
-          });
+          success: false,
+          message: err.sqlMessage || err.message
+        });
       }
 
       if (result.affectedRows === 0) {
