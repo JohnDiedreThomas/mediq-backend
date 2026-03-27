@@ -5,13 +5,6 @@ const adminAuth = require("../middleware/adminAuth");
 
 const upload = require("../middleware/uploadServiceCloudinary");
 
-const getCategory = (name) => {
-  const n = name.toLowerCase();
-
-  if (n.includes("tooth") || n.includes("dental") || n.includes("oral")) return "dental";
-  if (n.includes("therapy") || n.includes("massage")) return "therapy";
-  return "general";
-};
 /* 🔒 Protect all admin service routes */
 router.use(adminAuth);
 
@@ -32,7 +25,7 @@ router.get("/", (req, res) => {
 
 /* ADD SERVICE (NO CATEGORY) */
 router.post("/", (req, res) => {
-  let { name, description } = req.body;
+  let { name, description, category } = req.body;
 
   if (!name || !name.trim()) {
     return res.json({ success: false, message: "Name required" });
@@ -41,8 +34,10 @@ router.post("/", (req, res) => {
   name = name.trim();
   description = description?.trim() || null;
 
-  const category = getCategory(name); // 🔥 ADD THIS
-  console.log("🔥 CATEGORY GENERATED:", category);
+  category = category?.toLowerCase().trim();
+  if (!category) category = "general";
+
+  console.log("📦 CATEGORY RECEIVED:", category);
   
   db.query(
     "INSERT INTO services (name, description, category, status) VALUES (?, ?, ?, 'active')",
@@ -64,16 +59,17 @@ router.post("/", (req, res) => {
 /* UPDATE SERVICE (NO CATEGORY) */
 router.put("/:id", (req, res) => {
   const { id } = req.params;
-  let { name, description, status } = req.body;
+  let { name, description, status, category } = req.body;
 
   if (!name || !name.trim()) {
     return res.json({ success: false, message: "Name required" });
   }
 
   name = name.trim();
-  description = description?.trim() || null;
+description = description?.trim() || null;
 
-  const category = getCategory(name); // 🔥 ADD THIS
+category = category?.toLowerCase().trim();
+if (!category) category = "general";
 
   db.query(
     "UPDATE services SET name=?, description=?, category=?, status=? WHERE id=?",
