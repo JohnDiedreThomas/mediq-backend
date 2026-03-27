@@ -32,7 +32,6 @@ console.log("doctorsRoutes:", typeof doctorsRoutes);
 console.log("availabilityRoutes:", typeof availabilityRoutes);
 console.log("appointmentsRoutes:", typeof appointmentsRoutes);
 console.log("holidayRoutes:", typeof holidayRoutes);
-
 console.log("adminRoutes:", typeof adminRoutes);
 console.log("adminServices:", typeof adminServices);
 console.log("adminStaffRoutes:", typeof adminStaffRoutes);
