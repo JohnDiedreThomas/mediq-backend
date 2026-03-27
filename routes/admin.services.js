@@ -34,7 +34,7 @@ router.post("/", (req, res) => {
   name = name.trim();
   description = description?.trim() || null;
 
-  category = category?.toLowerCase().trim();
+  category = (category || "").toLowerCase().trim();
   if (!category) category = "general";
 
   console.log("📦 CATEGORY RECEIVED:", category);
@@ -42,7 +42,8 @@ router.post("/", (req, res) => {
   db.query(
     "INSERT INTO services (name, description, category, status) VALUES (?, ?, ?, 'active')",
     [name, description, category],
-    (err) => {
+    (err, result) => {   // ✅ ADD result
+  
       if (err) {
         console.error("ADD SERVICE ERROR:", err);
         return res.status(200).json({
@@ -50,8 +51,12 @@ router.post("/", (req, res) => {
           message: err.sqlMessage || err.message
         });
       }
-
-      return res.status(200).json({ success: true });
+  
+      // ✅ RETURN INSERT ID
+      return res.status(200).json({
+        success: true,
+        id: result.insertId
+      });
     }
   );
 });
@@ -68,7 +73,7 @@ router.put("/:id", (req, res) => {
   name = name.trim();
 description = description?.trim() || null;
 
-category = category?.toLowerCase().trim();
+category = (category || "").toLowerCase().trim();
 if (!category) category = "general";
 
   db.query(
