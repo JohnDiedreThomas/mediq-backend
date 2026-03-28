@@ -58,7 +58,7 @@ router.get("/by-service/:serviceId", (req, res) => {
 ===================== */
 router.get("/", (req, res) => {
   const sql =
-    "SELECT id, name, specialty, image  FROM doctors WHERE is_active = 1";
+    "SELECT id, name, specialty, description, image FROM doctors WHERE is_active = 1";
 
   db.query(sql, (err, results) => {
     if (err) {
