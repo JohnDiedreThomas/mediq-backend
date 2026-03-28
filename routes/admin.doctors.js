@@ -161,7 +161,7 @@ router.delete("/:id", (req, res) => {
       }
 
       if (rows[0].count > 0) {
-        return res.json({
+        return res.status(400).json({
           success: false,
           message: "Doctor has appointments and cannot be deleted",
         });
