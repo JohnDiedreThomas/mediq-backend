@@ -16,14 +16,17 @@ router.get("/", (req, res) => {
   db.query(
     `
     SELECT 
-      id,
-      name,
-      specialty,
-      description,
-      image,
-      is_active
-    FROM doctors
-    ORDER BY id DESC
+  d.id,
+  d.name,
+  d.specialty,
+  d.description,
+  d.image,
+  d.is_active,
+  s.name AS service_name,
+  d.service_id
+FROM doctors d
+LEFT JOIN services s ON d.service_id = s.id
+ORDER BY d.id DESC
     `,
     (err, rows) => {
       if (err) {
@@ -38,6 +41,10 @@ router.get("/", (req, res) => {
         description: d.description,
         image: d.image,
         status: d.is_active === 1 ? "active" : "inactive",
+      
+        // ✅ ADD THESE
+        service_id: d.service_id,
+        service_name: d.service_name,
       }));
 
       res.json({ success: true, doctors });
@@ -52,7 +59,7 @@ router.get("/", (req, res) => {
 |--------------------------------------------------
 */
 router.post("/", (req, res) => {
-  let { name, specialty, description } = req.body;
+  let { name, specialty, description, service_id } = req.body;
 
 name = name?.trim();
 specialty = String(specialty || "").toLowerCase().trim();
@@ -67,8 +74,8 @@ description = description?.trim() || null;
   }
 
   db.query(
-    "INSERT INTO doctors (name, specialty, description, is_active) VALUES (?, ?, ?, 1)",
-    [name, specialty, description || null],
+    "INSERT INTO doctors (name, specialty, description, service_id, is_active) VALUES (?, ?, ?, ?, 1)",
+    [name, specialty, description || null, service_id],
     (err, result) => {
       if (err) {
         console.error("❌ ADD DOCTOR ERROR:", err);
@@ -95,7 +102,7 @@ description = description?.trim() || null;
 */
 router.put("/:id", (req, res) => {
   console.log("BODY RECEIVED:", req.body); // 👈 ADD THIS
-  let { name, specialty, description } = req.body;
+  let { name, specialty, description, service_id } = req.body;
 
 name = name?.trim();
 specialty = String(specialty || "").toLowerCase().trim();
@@ -110,8 +117,8 @@ description = description?.trim() || null;
   }
 
   db.query(
-    "UPDATE doctors SET name = ?, specialty = ?, description = ? WHERE id = ?",
-    [name, specialty, description || null, req.params.id],
+    "UPDATE doctors SET name = ?, specialty = ?, description = ?, service_id = ? WHERE id = ?",
+    [name, specialty, description || null, service_id, req.params.id],
     (err, result) => {
       if (err || result.affectedRows === 0) {
         console.error("❌ UPDATE DOCTOR ERROR:", err);
