@@ -152,7 +152,7 @@ router.delete("/:id", (req, res) => {
   const doctorId = req.params.id;
 
   db.query(
-    "SELECT COUNT(*) AS count FROM appointments WHERE doctor_id = ?",
+    "SELECT COUNT(*) AS count FROM appointments WHERE doctor = ?",
     [doctorId],
     (err, rows) => {
       if (err) {
