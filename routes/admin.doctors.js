@@ -72,8 +72,12 @@ router.post("/", (req, res) => {
           message: "Database error",
         });
       }
-
-      res.json({ success: true });
+  
+      // ✅ RETURN ID
+      res.json({
+        success: true,
+        id: result.insertId
+      });
     }
   );
 });
