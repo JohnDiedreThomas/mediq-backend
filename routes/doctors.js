@@ -79,7 +79,7 @@ router.get("/:id/services", (req, res) => {
   const { id } = req.params;
 
   const sql = `
-    SELECT s.id, s.name, s.image
+    SELECT s.id, s.name, s.image, s.category
     FROM services s
     JOIN doctors d 
 ON LOWER(d.specialty) LIKE CONCAT('%', LOWER(s.category), '%')
