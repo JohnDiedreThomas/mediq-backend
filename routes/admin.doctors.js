@@ -52,7 +52,12 @@ router.get("/", (req, res) => {
 |--------------------------------------------------
 */
 router.post("/", (req, res) => {
-  const { name, specialty, description} = req.body;
+  let { name, specialty, description } = req.body;
+
+name = name?.trim();
+specialty = String(specialty || "").toLowerCase().trim();
+if (!specialty) specialty = "general";
+description = description?.trim() || null;
 
   if (!name || !specialty) {
     return res.json({
@@ -90,7 +95,12 @@ router.post("/", (req, res) => {
 */
 router.put("/:id", (req, res) => {
   console.log("BODY RECEIVED:", req.body); // 👈 ADD THIS
-  const { name, specialty, description } = req.body;
+  let { name, specialty, description } = req.body;
+
+name = name?.trim();
+specialty = String(specialty || "").toLowerCase().trim();
+if (!specialty) specialty = "general";
+description = description?.trim() || null;
 
   if (!name || !specialty) {
     return res.json({
@@ -142,7 +152,7 @@ router.delete("/:id", (req, res) => {
   const doctorId = req.params.id;
 
   db.query(
-    "SELECT COUNT(*) AS count FROM appointments WHERE doctor = ?",
+    "SELECT COUNT(*) AS count FROM appointments WHERE doctor_id = ?",
     [doctorId],
     (err, rows) => {
       if (err) {
