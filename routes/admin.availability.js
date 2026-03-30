@@ -195,9 +195,16 @@ if (targetDate < today) {
     message: "Cannot add slot to past date",
   });
 }
-  if (!time || !time_value || !total_slots) {
-    return res.json({ success: false, message: "Missing fields" });
-  }
+if (!time || !time_value || !total_slots) {
+  return res.json({ success: false, message: "Missing fields" });
+}
+
+if (Number(total_slots) <= 0 || Number(total_slots) > 100) {
+  return res.json({
+    success: false,
+    message: "Invalid slot capacity",
+  });
+}
 
   // 1️⃣ Check if slot already exists
   const checkSql = `
@@ -247,6 +254,13 @@ if (targetDate < today) {
         [doctorId, date, formattedTime, time_value, Number(total_slots)],
         (err3) => {
           if (err3) {
+            if (err3.code === "ER_DUP_ENTRY") {
+              return res.json({
+                success: false,
+                message: "Time slot already exists for this doctor",
+              });
+            }
+          
             console.error("ADD SLOT ERROR:", err3);
             return res.status(500).json({ success: false });
           }
