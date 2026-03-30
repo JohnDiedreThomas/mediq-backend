@@ -97,17 +97,14 @@ const [rescheduleResult] = await db.promise().query(
 const rescheduledCount = rescheduleResult[0].total || 0;
 
 /* 🔥 RESCHEDULE BREAKDOWN (NEW) */
-const [rescheduleBreakdown] = await db.promise().query(
-  `
+const [rescheduleBreakdown] = await db.promise().query(`
   SELECT 
-    COUNT(*) AS total,
+    SUM(CASE WHEN rescheduled = 1 THEN 1 ELSE 0 END) AS total,
     SUM(CASE WHEN rescheduled_by IS NOT NULL THEN 1 ELSE 0 END) AS staff,
     SUM(CASE WHEN rescheduled = 1 AND rescheduled_by IS NULL THEN 1 ELSE 0 END) AS patient
   FROM appointments
   WHERE date >= CURDATE() - INTERVAL ? DAY
-  `,
-  [days]
-);
+`, [days]);
 
 const rescheduleStats = rescheduleBreakdown[0] || {
   total: 0,
