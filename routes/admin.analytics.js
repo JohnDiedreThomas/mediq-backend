@@ -99,7 +99,7 @@ totalAppointments === 0
     const rescheduleRate =
     totalAppointments === 0
       ? 0
-      : rescheduledCount / totalAppointments;
+      : (rescheduledCount / totalAppointments) * 100;
 
     /* 4️⃣ DAILY TREND */
     const [trend] = await db.promise().query(
