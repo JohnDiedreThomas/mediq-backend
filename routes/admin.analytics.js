@@ -399,6 +399,51 @@ const [mostReviewedDoctorResult] = await db.promise().query(`
   mostReviewedDoctorResult.length > 0
   ? mostReviewedDoctorResult[0]
   : null;
+
+  /* MOST REVIEWED DOCTOR (POPULARITY) */
+const [mostReviewCountDoctorResult] = await db.promise().query(`
+  SELECT 
+  d.id,
+  d.name,
+  d.specialty,
+  COUNT(r.id) AS total_reviews,
+  ROUND(AVG(r.rating),1) AS avg_rating
+  FROM doctors d
+  LEFT JOIN doctor_reviews r 
+    ON r.doctor_id = d.id
+    AND r.created_at >= NOW() - INTERVAL ? DAY
+  GROUP BY d.id, d.name, d.specialty
+  HAVING total_reviews > 0
+  ORDER BY total_reviews DESC
+  LIMIT 1
+  `, [days]);
+  
+  const mostReviewCountDoctor =
+    mostReviewCountDoctorResult.length > 0
+      ? mostReviewCountDoctorResult[0]
+      : null;
+
+      const [leastReviewCountDoctorResult] = await db.promise().query(`
+        SELECT 
+        d.id,
+        d.name,
+        d.specialty,
+        COUNT(r.id) AS total_reviews,
+        ROUND(AVG(r.rating),1) AS avg_rating
+        FROM doctors d
+        LEFT JOIN doctor_reviews r 
+          ON r.doctor_id = d.id
+          AND r.created_at >= NOW() - INTERVAL ? DAY
+        GROUP BY d.id, d.name, d.specialty
+        HAVING total_reviews > 0
+        ORDER BY total_reviews ASC
+        LIMIT 1
+        `, [days]);
+        
+        const leastReviewCountDoctor =
+          leastReviewCountDoctorResult.length > 0
+            ? leastReviewCountDoctorResult[0]
+            : null;
   
   
   /* LOWEST RATED DOCTOR (FIXED) */
@@ -560,7 +605,9 @@ const [staffReliability] = await db.promise().query(`
         avgPatientsInside,
         mostReviewedDoctor,
 leastReviewedDoctor,
-topRatedDoctors
+topRatedDoctors,
+mostReviewCountDoctor,     
+leastReviewCountDoctor,    
       },
     });
   } catch (error) {
