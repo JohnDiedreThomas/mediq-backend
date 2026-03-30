@@ -83,23 +83,42 @@ totalAppointments === 0
         ? 0
         : (noShow / totalAppointments) * 100;
 
-    /* 3️⃣ RESCHEDULE COUNT */
-    const [rescheduleResult] = await db.promise().query(
-      `
-      SELECT COUNT(*) AS total
-      FROM appointments
-      WHERE rescheduled_by IS NOT NULL
-      AND date >= CURDATE() - INTERVAL ? DAY
-      `,
-      [days]
-    );
-    
-    const rescheduledCount = rescheduleResult[0].total || 0;
+   /* 3️⃣ RESCHEDULE COUNT */
+const [rescheduleResult] = await db.promise().query(
+  `
+  SELECT COUNT(*) AS total
+  FROM appointments
+  WHERE rescheduled = 1
+  AND date >= CURDATE() - INTERVAL ? DAY
+  `,
+  [days]
+);
 
-    const rescheduleRate =
-    totalAppointments === 0
-      ? 0
-      : (rescheduledCount / totalAppointments) * 100;
+const rescheduledCount = rescheduleResult[0].total || 0;
+
+/* 🔥 RESCHEDULE BREAKDOWN (NEW) */
+const [rescheduleBreakdown] = await db.promise().query(
+  `
+  SELECT 
+    COUNT(*) AS total,
+    SUM(CASE WHEN rescheduled_by IS NOT NULL THEN 1 ELSE 0 END) AS staff,
+    SUM(CASE WHEN rescheduled = 1 AND rescheduled_by IS NULL THEN 1 ELSE 0 END) AS patient
+  FROM appointments
+  WHERE date >= CURDATE() - INTERVAL ? DAY
+  `,
+  [days]
+);
+
+const rescheduleStats = rescheduleBreakdown[0] || {
+  total: 0,
+  staff: 0,
+  patient: 0
+};
+
+const rescheduleRate =
+  totalAppointments === 0
+    ? 0
+    : (rescheduledCount / totalAppointments) * 100;
 
     /* 4️⃣ DAILY TREND */
     const [trend] = await db.promise().query(
@@ -605,7 +624,8 @@ const [staffReliability] = await db.promise().query(`
 leastReviewedDoctor,
 topRatedDoctors,
 mostReviewCountDoctor,     
-leastReviewCountDoctor,    
+leastReviewCountDoctor,   
+rescheduleStats, 
       },
     });
   } catch (error) {
