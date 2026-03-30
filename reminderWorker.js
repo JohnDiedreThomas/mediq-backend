@@ -211,17 +211,33 @@ function startReminderWorker() {
           | Reminder window
           |---------------------------------------------------
           */
-          if (diffMinutes > 0 && diffMinutes <= 60) {
+        
+          if (
+            appt.reminder_sent === 0 &&
+            (
+              (diffMinutes <= 60 && diffMinutes > 59) ||
+              (diffMinutes <= 30 && diffMinutes > 29)
+            )
+          ) {
             if (appt.push_token) {
+
+              let label = "";
+
+              if (diffMinutes <= 60 && diffMinutes > 59) {
+                label = "1 Hour";
+              } else if (diffMinutes <= 30 && diffMinutes > 29) {
+                label = "30 Minutes";
+              }
+
               const message = `Reminder: You have an appointment for ${appt.service} with ${appt.doctor_name} at ${appt.time}`;
 
               await sendPushIfAllowed(
                 appt.user_id,
-                "🔔 Mediq Reminder",
+                `🔔 Mediq Reminder (${label})`,
                 message
               );
 
-              console.log("✅ Reminder sent:", appt.id);
+              console.log("✅ Reminder sent:", appt.id, label);
             }
 
             db.query(
@@ -229,6 +245,7 @@ function startReminderWorker() {
               [appt.id]
             );
           }
+
         } catch (error) {
           console.error("❌ Reminder error:", error);
         }
