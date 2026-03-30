@@ -86,13 +86,14 @@ totalAppointments === 0
     /* 3️⃣ RESCHEDULE COUNT */
     const [rescheduleResult] = await db.promise().query(
       `
-      SELECT SUM(reschedule_count) AS total
-FROM appointments
-WHERE date >= CURDATE() - INTERVAL ? DAY
+      SELECT COUNT(*) AS total
+      FROM appointments
+      WHERE rescheduled_by IS NOT NULL
+      AND date >= CURDATE() - INTERVAL ? DAY
       `,
       [days]
     );
-
+    
     const rescheduledCount = rescheduleResult[0].total || 0;
 
     const rescheduleRate =
