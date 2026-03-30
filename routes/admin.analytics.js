@@ -375,7 +375,7 @@ const [staffActions] = await db.promise().query(`
   `);
 
 
-  /* 1️⃣4️⃣ DOCTOR REVIEW INSIGHTS */
+/* 1️⃣4️⃣ DOCTOR REVIEW INSIGHTS */
 
 /* MOST POSITIVELY REVIEWED DOCTOR */
 const [mostReviewedDoctorResult] = await db.promise().query(`
@@ -387,20 +387,20 @@ const [mostReviewedDoctorResult] = await db.promise().query(`
   ROUND(AVG(r.rating),1) AS avg_rating
   FROM doctors d
   LEFT JOIN doctor_reviews r 
-    ON r.doctor_id = d.id
-    AND r.created_at >= NOW() - INTERVAL ? DAY
+    ON r.doctor_id = d.id   -- ✅ FIXED (removed date filter)
   GROUP BY d.id, d.name, d.specialty
   HAVING total_reviews > 0
   ORDER BY avg_rating DESC, total_reviews DESC
   LIMIT 1
-  `, [days]);
-  
-  const mostReviewedDoctor =
-  mostReviewedDoctorResult.length > 0
-  ? mostReviewedDoctorResult[0]
-  : null;
+`);
 
-  /* MOST REVIEWED DOCTOR (POPULARITY) */
+const mostReviewedDoctor =
+mostReviewedDoctorResult.length > 0
+? mostReviewedDoctorResult[0]
+: null;
+
+
+/* MOST REVIEWED DOCTOR (POPULARITY) */
 const [mostReviewCountDoctorResult] = await db.promise().query(`
   SELECT 
   d.id,
@@ -410,43 +410,43 @@ const [mostReviewCountDoctorResult] = await db.promise().query(`
   ROUND(AVG(r.rating),1) AS avg_rating
   FROM doctors d
   LEFT JOIN doctor_reviews r 
-    ON r.doctor_id = d.id
-    AND r.created_at >= NOW() - INTERVAL ? DAY
+    ON r.doctor_id = d.id   -- ✅ FIXED
   GROUP BY d.id, d.name, d.specialty
   HAVING total_reviews > 0
   ORDER BY total_reviews DESC
   LIMIT 1
-  `, [days]);
-  
-  const mostReviewCountDoctor =
-    mostReviewCountDoctorResult.length > 0
-      ? mostReviewCountDoctorResult[0]
-      : null;
+`);
 
-      const [leastReviewCountDoctorResult] = await db.promise().query(`
-        SELECT 
-        d.id,
-        d.name,
-        d.specialty,
-        COUNT(r.id) AS total_reviews,
-        ROUND(AVG(r.rating),1) AS avg_rating
-        FROM doctors d
-        LEFT JOIN doctor_reviews r 
-          ON r.doctor_id = d.id
-          AND r.created_at >= NOW() - INTERVAL ? DAY
-        GROUP BY d.id, d.name, d.specialty
-        HAVING total_reviews > 0
-        ORDER BY total_reviews ASC
-        LIMIT 1
-        `, [days]);
-        
-        const leastReviewCountDoctor =
-          leastReviewCountDoctorResult.length > 0
-            ? leastReviewCountDoctorResult[0]
-            : null;
-  
-  
-  /* LOWEST RATED DOCTOR (FIXED) */
+const mostReviewCountDoctor =
+  mostReviewCountDoctorResult.length > 0
+    ? mostReviewCountDoctorResult[0]
+    : null;
+
+
+/* LEAST REVIEWED DOCTOR */
+const [leastReviewCountDoctorResult] = await db.promise().query(`
+  SELECT 
+  d.id,
+  d.name,
+  d.specialty,
+  COUNT(r.id) AS total_reviews,
+  ROUND(AVG(r.rating),1) AS avg_rating
+  FROM doctors d
+  LEFT JOIN doctor_reviews r 
+    ON r.doctor_id = d.id   -- ✅ FIXED
+  GROUP BY d.id, d.name, d.specialty
+  HAVING total_reviews > 0
+  ORDER BY total_reviews ASC
+  LIMIT 1
+`);
+
+const leastReviewCountDoctor =
+  leastReviewCountDoctorResult.length > 0
+    ? leastReviewCountDoctorResult[0]
+    : null;
+
+
+/* LOWEST RATED DOCTOR */
 const [leastReviewedDoctorResult] = await db.promise().query(`
   SELECT 
   d.id,
@@ -456,38 +456,35 @@ const [leastReviewedDoctorResult] = await db.promise().query(`
   ROUND(AVG(r.rating),1) AS avg_rating
   FROM doctors d
   LEFT JOIN doctor_reviews r 
-    ON r.doctor_id = d.id
-    AND r.created_at >= NOW() - INTERVAL ? DAY
+    ON r.doctor_id = d.id   -- ✅ FIXED
   GROUP BY d.id, d.name, d.specialty
   HAVING total_reviews > 0
   ORDER BY avg_rating ASC, total_reviews DESC
   LIMIT 1
-  `, [days]);
-  
-  const leastReviewedDoctor =
-  leastReviewedDoctorResult.length > 0
-  ? leastReviewedDoctorResult[0]
-  : null;
+`);
+
+const leastReviewedDoctor =
+leastReviewedDoctorResult.length > 0
+? leastReviewedDoctorResult[0]
+: null;
 
 
-  /* 1️⃣5️⃣ TOP RATED DOCTORS (LEADERBOARD) */
-
-  const [topRatedDoctors] = await db.promise().query(`
-    SELECT 
-    d.id,
-    d.name,
-    d.specialty,
-    COUNT(r.id) AS total_reviews,
-    ROUND(AVG(r.rating),1) AS avg_rating
-    FROM doctors d
-    LEFT JOIN doctor_reviews r 
-      ON r.doctor_id = d.id
-      AND r.created_at >= NOW() - INTERVAL ? DAY
-    GROUP BY d.id, d.name, d.specialty
-    HAVING total_reviews > 0
-    ORDER BY avg_rating DESC, total_reviews DESC
-    LIMIT 5
-    `, [days]);
+/* 1️⃣5️⃣ TOP RATED DOCTORS */
+const [topRatedDoctors] = await db.promise().query(`
+  SELECT 
+  d.id,
+  d.name,
+  d.specialty,
+  COUNT(r.id) AS total_reviews,
+  ROUND(AVG(r.rating),1) AS avg_rating
+  FROM doctors d
+  LEFT JOIN doctor_reviews r 
+    ON r.doctor_id = d.id   -- ✅ FIXED
+  GROUP BY d.id, d.name, d.specialty
+  HAVING total_reviews > 0
+  ORDER BY avg_rating DESC, total_reviews DESC
+  LIMIT 5
+`);
 
 
   /* 1️⃣6️⃣ STAFF PRODUCTIVITY RANKING */
