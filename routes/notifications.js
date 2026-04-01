@@ -97,7 +97,14 @@ router.get("/staff", (req, res) => {
 
   db.query(
     `
-    SELECT id,title,message,created_at
+    SELECT 
+  id,
+  title,
+  message,
+  DATE_FORMAT(
+    created_at + INTERVAL 8 HOUR,
+    '%b %d, %Y, %h:%i %p'
+  ) AS created_at
     FROM staff_notifications
     ORDER BY created_at DESC
     LIMIT 50
@@ -170,7 +177,16 @@ router.get("/:userId", (req, res) => {
 
   db.query(
     `
-    SELECT id,user_id,title,message,is_read,created_at
+    SELECT 
+  id,
+  user_id,
+  title,
+  message,
+  is_read,
+  DATE_FORMAT(
+    created_at + INTERVAL 8 HOUR,
+    '%b %d, %Y, %h:%i %p'
+  ) AS created_at
     FROM notifications
     WHERE user_id = ?
     ORDER BY created_at DESC

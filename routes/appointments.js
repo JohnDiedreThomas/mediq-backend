@@ -48,10 +48,9 @@ function convertTo24Hour(timeStr) {
 function formatPH(dateStr, timeStr) {
   const time24 = convertTo24Hour(timeStr);
 
-  const phDate = new Date(`${dateStr}T${time24}+08:00`);
+  const phDate = new Date(`${dateStr}T${time24}`);
 
   return phDate.toLocaleString("en-PH", {
-    timeZone: "Asia/Manila",
     dateStyle: "medium",
     timeStyle: "short",
   });
