@@ -242,6 +242,30 @@ router.put("/profile/:id", async (req, res) => {
 });
 
 /* =====================
+   REMOVE PUSH TOKEN (IMPORTANT)
+===================== */
+router.post("/remove-token", (req, res) => {
+  const { pushToken } = req.body;
+
+  if (!pushToken) {
+    return res.json({ success: false });
+  }
+
+  db.query(
+    "UPDATE users SET push_token = NULL WHERE push_token = ?",
+    [pushToken],
+    (err) => {
+      if (err) {
+        console.error("REMOVE TOKEN ERROR:", err);
+        return res.json({ success: false });
+      }
+
+      res.json({ success: true });
+    }
+  );
+});
+
+/* =====================
    SAVE PUSH TOKEN
 ===================== */
 router.post("/save-token", (req, res) => {

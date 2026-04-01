@@ -1,30 +1,35 @@
 const express = require("express");
 const db = require("../db");
 const { sendPushNotification } = require("../pushNotification");
+
 function sendPushIfAllowed(userId, title, message) {
+  return new Promise((resolve) => {
 
-  db.query(
-    "SELECT push_token, mute_notifications FROM users WHERE id = ?",
-    [userId],
-    async (err, rows) => {
+    db.query(
+      "SELECT push_token, mute_notifications FROM users WHERE id = ?",
+      [userId],
+      async (err, rows) => {
 
-      if (err || rows.length === 0) return;
+        if (err || rows.length === 0) return resolve();
 
-      const user = rows[0];
+        const user = rows[0];
 
-      if (user.mute_notifications) return;
+        if (user.mute_notifications) return resolve();
 
-      if (user.push_token) {
-        try {
-          await sendPushNotification(user.push_token, title, message);
-        } catch (e) {
-          console.log("Push error:", e);
+        if (user.push_token) {
+          try {
+            console.log("PUSH TO:", userId, user.push_token);// ✅ DEBUG
+            await sendPushNotification(user.push_token, title, message);
+          } catch (e) {
+            console.log("Push error:", e);
+          }
         }
+
+        resolve();
       }
+    );
 
-    }
-  );
-
+  });
 }
 
 const router = express.Router();
@@ -268,7 +273,7 @@ router.post("/", (req, res) => {
                       });
                     }
 
-                    conn.commit((err) => {
+                    conn.commit(async (err) => { 
                       conn.release();
                     
                       if (err) {
@@ -303,33 +308,27 @@ router.post("/", (req, res) => {
                     
                       // ✅ PUSH to ALL STAFF
                       db.query(
-                        "SELECT id, push_token FROM users WHERE role = 'staff'",
+                        "SELECT id FROM users WHERE role = 'staff'",
                         async (err, rows) => {
                           if (!err && rows.length > 0) {
                             for (const staff of rows) {
-                              if (staff.push_token) {
-                                await sendPushIfAllowed(
-                                  staff.id,
-                                  "New Appointment 📅",
-                                  `${patient_name} booked for ${formatPH(date, time)}`
-                                );
-                              }
+
+                              await sendPushIfAllowed(
+                                staff.id,
+                                "New Appointment 📅",
+                                `${patient_name} booked for ${formatPH(date, time)}`
+                              );
+                            
                             }
                           }
                         }
                       );
                       // 🔔 PUSH TO PATIENT
-                      db.query(
-                        "SELECT push_token FROM users WHERE id = ?",
-                        [user_id],
-                        async (err, rows) => {
-                          if (!err && rows.length > 0 && rows[0].push_token) {
-                            await sendPushIfAllowed(
-                              user_id,
-                              "Appointment Requested 📅",
-                              `Your appointment for ${service} on ${formatPH(date, time)} is pending approval`
-                            );
-                          }
+                      await sendPushIfAllowed(
+                        user_id,
+                        "Appointment Requested 📅",
+                        `Your appointment for ${service} on ${formatPH(date, time)} is pending approval`
+                      );
                           // ✅ SAVE IN APP NOTIFICATION
 db.query(
   `INSERT INTO notifications (user_id,title,message,is_read)
@@ -354,7 +353,7 @@ db.query(
     });
   });
   });
-});
+
 
 
 
@@ -568,17 +567,17 @@ router.put("/:id", (req, res) => {
                                   
                                     // 🔔 PUSH TO STAFF
                                     db.query(
-                                      "SELECT id, push_token FROM users WHERE role = 'staff'",
+                                      "SELECT id FROM users WHERE role = 'staff'",
                                       async (err, staffRows) => {
                                         if (!err && staffRows.length > 0) {
                                           for (const staff of staffRows) {
-                                            if (staff.push_token) {
-                                              await sendPushIfAllowed(
-                                                staff.id,
-                                                "Patient Rescheduled 🔄",
-                                                `Appointment moved to ${date} at ${time}`
-                                              );
-                                            }
+                                    
+                                            await sendPushIfAllowed(
+                                              staff.id,
+                                              "Patient Rescheduled 🔄",
+                                              `Appointment moved to ${date} at ${time}`
+                                            );
+                                    
                                           }
                                         }
                                       }
@@ -589,7 +588,7 @@ router.put("/:id", (req, res) => {
                                       "SELECT a.user_id, u.push_token FROM appointments a JOIN users u ON u.id=a.user_id WHERE a.id=?",
                                       [id],
                                       async (err, rows) => {
-                                        if (!err && rows.length > 0 && rows[0].push_token) {
+                                        if (!err && rows.length > 0) {
                                           await sendPushIfAllowed(
                                             rows[0].user_id,
                                             "Appointment Rescheduled 🔄",
@@ -722,17 +721,13 @@ router.put("/:id/cancel", (req, res) => {
                         "SELECT push_token FROM users WHERE id = ?",
                         [appt.user_id],
                         async (err, userRows) => {
-                          if (!err && userRows.length > 0) {
-                            const pushToken = userRows[0].push_token;
-
-                            if (pushToken) {
-                              await sendPushIfAllowed(
-                                appt.user_id,
-                                "Appointment Cancelled ❌",
-                                "Your appointment has been cancelled. Contact the clinic for more info"
-                              );
-                            }
-                          }
+                          await sendPushIfAllowed(
+                            appt.user_id,
+                            "Appointment Cancelled ❌",
+                            "Your appointment has been cancelled. Contact the clinic for more info"
+                          );
+                            
+                          
                           db.query(
                             `INSERT INTO notifications (user_id, title, message, is_read)
                              VALUES (?, ?, ?, 0)`,
@@ -777,30 +772,27 @@ router.put("/:id/cancel", (req, res) => {
                             );
                             // 🔔 PUSH NOTIFICATION TO STAFF
   db.query(
-    "SELECT id, push_token FROM users WHERE role = 'staff'",
+    "SELECT id FROM users WHERE role = 'staff'",
     async (err, rows) => {
 
       if (!err && rows.length > 0) {
 
         for (const staff of rows) {
 
-          if (staff.push_token) {
-
-            const name = appt.patient_name || "A patient";
-          
-            await sendPushIfAllowed(
-              staff.id,
-              "Appointment Cancelled ❌",
-              `${name} cancelled appointment for ${formatPH(appt.date, appt.time)}`
-            );
-          
-          }
+          const name = appt.patient_name || "A patient";
+        
+          await sendPushIfAllowed(
+            staff.id,
+            "Appointment Cancelled ❌",
+            `${name} cancelled appointment for ${formatPH(appt.date, appt.time)}`
+          );
+        
+        }
 
         }
 
       }
-
-    }
+    
   );
 
 
@@ -930,13 +922,11 @@ router.put("/:id/approve", (req, res) => {
               );
 
               // approval push
-              if (appt.push_token) {
-                await sendPushIfAllowed(
-                  appt.user_id,
-                  "Appointment Approved ✅",
-                  "Your appointment has been approved by the clinic."
-                );
-              }
+              await sendPushIfAllowed(
+                appt.user_id,
+                "Appointment Approved ✅",
+                "Your appointment has been approved by the clinic."
+              );
 
               // instant reminder
               const appointmentTime24 = convertTo24Hour(appt.time);
@@ -1018,36 +1008,24 @@ router.put("/:id/complete", (req, res) => {
           conn.query(
             `SELECT user_id, patient_name FROM appointments WHERE id = ?`,
             [id],
-            (err, rows) => {
+            async (err, rows) => {   // ✅ FIX HERE
+          
               if (err || rows.length === 0) {
                 return conn.rollback(() => {
                   conn.release();
                   res.json({ success: false });
                 });
               }
-
+          
               const userId = rows[0].user_id;
               const patientName = rows[0].patient_name;
-
-              db.query(
-                "SELECT id FROM users WHERE role = 'staff'",
-                [userId],
-                async (err, userRows) => {
-                  if (!err && userRows.length > 0) {
-                    const pushToken = userRows[0].push_token;
-
-                    if (pushToken) {
-                      try {
-                        await sendPushIfAllowed(
-                          userId,
-                          "Appointment Completed 🏥",
-                          `Your appointment for ${patientName} has been completed.`
-                        );
-                      } catch (e) {
-                        console.log("Push error:", e);
-                      }
-                    }
-                  }
+          
+              await sendPushIfAllowed(   // ✅ NOW VALID
+                userId,
+                "Appointment Completed 🏥",
+                `Your appointment for ${patientName} has been completed.`
+              );
+                  
 
                   // patient notification
                   conn.query(
@@ -1101,7 +1079,7 @@ router.put("/:id/complete", (req, res) => {
       );
     });
   });
-});
+
 
 /*
 |--------------------------------------------------------------------------
@@ -1239,13 +1217,11 @@ router.put("/:id/status", (req, res) => {
             return res.json({ success: false });
           }
         
-          if (rows[0].push_token) {
-            await sendPushIfAllowed(
-              rows[0].user_id,
-              "Appointment Status Update",
-              `Your appointment status is now ${status.replace("_", " ")}`
-            );
-          }
+          await sendPushIfAllowed(
+            rows[0].user_id,
+            "Appointment Status Update",
+            `Your appointment status is now ${status.replace("_", " ")}`
+          );
         
           db.query(
             `INSERT INTO notifications (user_id,title,message,is_read)
@@ -1403,7 +1379,7 @@ router.put("/:id/staff-reschedule", (req, res) => {
                                     }
                                   );
                             
-                                  conn.commit(err => {
+                                  conn.commit(async (err) => {
                                     conn.release();
 
                                     if (err) return res.json({ success: false });
@@ -1435,32 +1411,12 @@ router.put("/:id/staff-reschedule", (req, res) => {
                                     );
 
                                     // ✅ PATIENT NOTIFICATION
-                                    db.query(
-                                      `INSERT INTO notifications (user_id,title,message,is_read)
-                                       VALUES (?,?,?,0)`,
-                                      [
-                                        old.user_id,
-                                        "Appointment Rescheduled",
-                                        `Clinic moved your appointment to ${date} ${time}`,
-                                      ]
+                                    await sendPushIfAllowed(
+                                      old.user_id,
+                                      "Appointment Rescheduled 🔄",
+                                      `Clinic moved your appointment to ${formatPH(date, time)}`
                                     );
-                                    // 🔔 PUSH TO PATIENT
-                                    db.query(
-                                      "SELECT push_token FROM users WHERE id = ?",
-                                      [old.user_id],
-                                      async (err, rows) => {
-                                        if (!err && rows.length > 0 && rows[0].push_token) {
-                                          await sendPushIfAllowed(
-                                            old.user_id,
-                                            "Appointment Rescheduled 🔄",
-                                            `Clinic moved your appointment to ${formatPH(date, time)}`
-                                          );
-                                        }
-                                       
-
-                                        
-                                      }
-                                    );
+                                    
 
                                     res.json({ success: true });
                                   });
