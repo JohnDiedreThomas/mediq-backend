@@ -709,7 +709,7 @@ router.put("/:id/cancel", (req, res) => {
                      WHERE doctor_id = ?
                      AND DATE(date) = ?`,
                     [appt.doctor, appt.date],
-                    (err) => {
+                    async (err) => {  
                       if (err) {
                         return conn.rollback(() => {
                           conn.release();
@@ -717,26 +717,23 @@ router.put("/:id/cancel", (req, res) => {
                         });
                       }
 
-                      conn.query(
-                        "SELECT push_token FROM users WHERE id = ?",
-                        [appt.user_id],
-                        async (err, userRows) => {
-                          await sendPushIfAllowed(
-                            appt.user_id,
-                            "Appointment Cancelled ❌",
-                            "Your appointment has been cancelled. Contact the clinic for more info"
-                          );
-                            
-                          
-                          db.query(
-                            `INSERT INTO notifications (user_id, title, message, is_read)
-                             VALUES (?, ?, ?, 0)`,
-                            [
-                              appt.user_id,
-                              "Appointment Cancelled",
-                              "Your appointment has been cancelled, please contact (Contact Us) the clinic for more info"
-                            ]
-                          );
+                      // 🔔 PUSH TO PATIENT
+await sendPushIfAllowed(
+  appt.user_id,
+  "Appointment Cancelled ❌",
+  "Your appointment has been cancelled. Contact the clinic for more info"
+);
+
+// 💾 SAVE PATIENT NOTIFICATION
+conn.query(
+  `INSERT INTO notifications (user_id, title, message, is_read)
+   VALUES (?, ?, ?, 0)`,
+  [
+    appt.user_id,
+    "Appointment Cancelled",
+    "Your appointment has been cancelled, please contact (Contact Us) the clinic for more info"
+  ]
+);
 
                           conn.commit((err) => {
                             conn.release();
@@ -798,6 +795,7 @@ router.put("/:id/cancel", (req, res) => {
 
                             res.json({ success: true });
                           });
+
                         }
                       );
                     }
@@ -806,11 +804,9 @@ router.put("/:id/cancel", (req, res) => {
               );
             }
           );
-        }
-      );
+        });
+      });
     });
-  });
-});
 
 
 

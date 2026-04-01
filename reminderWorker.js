@@ -215,8 +215,8 @@ function startReminderWorker() {
           if (
             appt.reminder_sent === 0 &&
             (
-              (diffMinutes <= 60 && diffMinutes > 59) ||
-              (diffMinutes <= 30 && diffMinutes > 29)
+              (diffMinutes <= 60 && diffMinutes > 55) ||
+(diffMinutes <= 30 && diffMinutes > 25)
             )
           ) {
             if (appt.push_token) {
@@ -240,10 +240,13 @@ function startReminderWorker() {
               console.log("✅ Reminder sent:", appt.id, label);
             }
 
-            db.query(
-              "UPDATE appointments SET reminder_sent = 1 WHERE id = ?",
-              [appt.id]
-            );
+            await new Promise((resolve) => {
+              db.query(
+                "UPDATE appointments SET reminder_sent = 1 WHERE id = ?",
+                [appt.id],
+                () => resolve()
+              );
+            });
           }
 
         } catch (error) {
