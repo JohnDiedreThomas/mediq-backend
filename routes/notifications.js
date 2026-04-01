@@ -160,6 +160,31 @@ router.delete("/staff/user/:userId", (req, res) => {
 
 });
 
+router.get("/staff/count/:userId", (req, res) => {
+
+  const { userId } = req.params;
+
+  db.query(
+    `
+    SELECT COUNT(*) AS unreadCount
+    FROM staff_notifications
+    WHERE user_id = ? AND is_read = 0
+    `,
+    [userId],
+    (err, rows) => {
+
+      if (err) return res.json({ success: false });
+
+      res.json({
+        success: true,
+        count: rows[0].unreadCount
+      });
+
+    }
+  );
+
+});
+
 /* GET MUTE STATUS */
 router.get("/mute/:userId", (req, res) => {
 
