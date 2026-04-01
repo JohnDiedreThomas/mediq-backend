@@ -28,7 +28,7 @@ FROM (
 
         -- Ignore past slots for today
         WHEN DATE(date) = CURDATE()
-             AND time_value < CURTIME() THEN 0
+     AND time_value <= ADDTIME(CURTIME(), '08:00:00') THEN 0
 
         -- Count valid future slots
         ELSE (total_slots - booked_slots)
