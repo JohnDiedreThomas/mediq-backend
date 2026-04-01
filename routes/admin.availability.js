@@ -42,7 +42,19 @@ router.get("/:doctorId", (req, res) => {
     FROM (
       SELECT
         DATE(date) AS d,
-        SUM(total_slots - booked_slots) AS remaining
+        SUM(
+  CASE
+    -- ❌ ignore full slots
+    WHEN (total_slots - booked_slots) <= 0 THEN 0
+
+    -- 🔥 ignore past time slots (MAIN FIX)
+    WHEN DATE(date) = CURDATE()
+         AND time_value < CURTIME() THEN 0
+
+    -- ✅ count valid future slots
+    ELSE (total_slots - booked_slots)
+  END
+) AS remaining
       FROM doctor_time_slots
       WHERE doctor_id = ?
       GROUP BY DATE(date)
