@@ -92,46 +92,15 @@ router.delete("/:id/:userId", (req, res) => {
 
 });
 
-/* STAFF NOTIFICATIONS */
-router.get("/staff", (req, res) => {
-
-  db.query(
-    `
-    SELECT 
-      id,
-      title,
-      message,
-      is_read,
-      DATE_FORMAT(
-        created_at + INTERVAL 8 HOUR,
-        '%b %d, %Y, %h:%i %p'
-      ) AS created_at
-    FROM staff_notifications
-    ORDER BY staff_notifications.created_at DESC
-    LIMIT 50
-    `,
-    (err, rows) => {
-
-      if (err) {
-        console.error("STAFF NOTIF ERROR:", err);
-        return res.json({ success:false });
-      }
-
-      res.json({
-        success:true,
-        notifications:rows
-      });
-
-    }
-  );
-
-});
 
 /* MARK ALL STAFF NOTIFICATIONS AS READ */
-router.put("/staff/read", (req, res) => {
+router.put("/staff/read/:userId", (req, res) => {
+
+  const { userId } = req.params;
 
   db.query(
-    "UPDATE staff_notifications SET is_read = 1",
+    "UPDATE staff_notifications SET is_read = 1 WHERE user_id = ?",
+    [userId],
     (err) => {
 
       if (err) {
@@ -147,13 +116,13 @@ router.put("/staff/read", (req, res) => {
 });
 
 /* DELETE SINGLE STAFF NOTIFICATION */
-router.delete("/staff/:id", (req, res) => {
+router.delete("/staff/:id/:userId", (req, res) => {
 
-  const { id } = req.params;
+  const { id, userId } = req.params;
 
   db.query(
-    "DELETE FROM staff_notifications WHERE id = ?",
-    [id],
+    "DELETE FROM staff_notifications WHERE id = ? AND user_id = ?",
+    [id, userId],
     (err) => {
 
       if (err) {
@@ -205,6 +174,45 @@ router.put("/mute/:userId",(req,res)=>{
       if(err) return res.json({success:false});
 
       res.json({success:true});
+
+    }
+  );
+
+});
+
+
+/* STAFF NOTIFICATIONS */
+router.get("/staff/:userId", (req, res) => {
+
+  const { userId } = req.params;
+
+  db.query(
+    `
+    SELECT 
+      id,
+      title,
+      message,
+      is_read,
+      DATE_FORMAT(
+        created_at + INTERVAL 8 HOUR,
+        '%b %d, %Y, %h:%i %p'
+      ) AS created_at
+   FROM staff_notifications
+WHERE user_id = ?
+ORDER BY staff_notifications.created_at DESC
+    LIMIT 50
+    `,
+    [userId], (err, rows) => {
+
+      if (err) {
+        console.error("STAFF NOTIF ERROR:", err);
+        return res.json({ success:false });
+      }
+
+      res.json({
+        success:true,
+        notifications:rows
+      });
 
     }
   );
