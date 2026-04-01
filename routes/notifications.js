@@ -137,6 +137,29 @@ router.delete("/staff/:id/:userId", (req, res) => {
 
 });
 
+
+/* DELETE ALL STAFF NOTIFICATIONS */
+router.delete("/staff/user/:userId", (req, res) => {
+
+  const { userId } = req.params;
+
+  db.query(
+    "DELETE FROM staff_notifications WHERE user_id = ?",
+    [userId],
+    (err) => {
+
+      if (err) {
+        console.error("DELETE STAFF ALL ERROR:", err);
+        return res.json({ success:false });
+      }
+
+      res.json({ success:true });
+
+    }
+  );
+
+});
+
 /* GET MUTE STATUS */
 router.get("/mute/:userId", (req, res) => {
 
