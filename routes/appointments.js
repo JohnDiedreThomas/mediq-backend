@@ -277,12 +277,28 @@ router.post("/", (req, res) => {
                     
                       // ✅ Save staff notification (in app list)
                       db.query(
-                        `INSERT INTO staff_notifications (title, message)
-                         VALUES (?, ?)`,
-                        [
-                          "New Appointment 📅",
-                          `New booking: ${patient_name} scheduled on ${date} at ${time}`
-                        ]
+                        "SELECT id FROM users WHERE role = 'staff'",
+                        (err, staffRows) => {
+                      
+                          if (!err && staffRows.length > 0) {
+                      
+                            for (const staff of staffRows) {
+                      
+                              db.query(
+                                `INSERT INTO staff_notifications (user_id, title, message)
+                                 VALUES (?, ?, ?)`,
+                                [
+                                  staff.id,
+                                  "New Appointment 📅",
+                                  `New booking: ${patient_name} scheduled on ${date} at ${time}`
+                                ]
+                              );
+                      
+                            }
+                      
+                          }
+                      
+                        }
                       );
                     
                       // ✅ PUSH to ALL STAFF
@@ -526,12 +542,28 @@ router.put("/:id", (req, res) => {
                                   
                                     // ✅ Save staff notification
                                     db.query(
-                                      `INSERT INTO staff_notifications (title,message)
-                                       VALUES (?,?)`,
-                                      [
-                                        "Patient Rescheduled 🔄",
-                                        `${patient_name} rescheduled appointment to ${formatPH(date,time)}`,
-                                      ]
+                                      "SELECT id FROM users WHERE role = 'staff'",
+                                      (err, staffRows) => {
+                                    
+                                        if (!err && staffRows.length > 0) {
+                                    
+                                          for (const staff of staffRows) {
+                                    
+                                            db.query(
+                                              `INSERT INTO staff_notifications (user_id, title, message)
+                                               VALUES (?, ?, ?)`,
+                                              [
+                                                staff.id,
+                                                "Patient Rescheduled 🔄",
+                                                `${patient_name} rescheduled appointment to ${formatPH(date,time)}`
+                                              ]
+                                            );
+                                    
+                                          }
+                                    
+                                        }
+                                    
+                                      }
                                     );
                                   
                                     // 🔔 PUSH TO STAFF
@@ -718,12 +750,30 @@ router.put("/:id/cancel", (req, res) => {
                               return res.json({ success: false });
                             }
                             db.query(
-                              `INSERT INTO staff_notifications (title, message)
-                               VALUES (?, ?)`,
-                               [
-                                "Appointment Cancelled ❌",
-                                `${appt.patient_name} cancelled their appointment`
-                              ]
+                              "SELECT id FROM users WHERE role = 'staff'",
+                              (err, staffRows) => {
+                            
+                                if (!err && staffRows.length > 0) {
+                            
+                                  for (const staff of staffRows) {
+                            
+                                    const name = appt.patient_name || "A patient";
+                            
+                                    db.query(
+                                      `INSERT INTO staff_notifications (user_id, title, message)
+                                       VALUES (?, ?, ?)`,
+                                      [
+                                        staff.id,
+                                        "Appointment Cancelled ❌",
+                                        `${name} cancelled their appointment`
+                                      ]
+                                    );
+                            
+                                  }
+                            
+                                }
+                            
+                              }
                             );
                             // 🔔 PUSH NOTIFICATION TO STAFF
   db.query(
@@ -979,8 +1029,8 @@ router.put("/:id/complete", (req, res) => {
               const userId = rows[0].user_id;
               const patientName = rows[0].patient_name;
 
-              conn.query(
-                "SELECT push_token FROM users WHERE id = ?",
+              db.query(
+                "SELECT id FROM users WHERE role = 'staff'",
                 [userId],
                 async (err, userRows) => {
                   if (!err && userRows.length > 0) {
@@ -1012,12 +1062,28 @@ router.put("/:id/complete", (req, res) => {
 
                   // staff notification
                   conn.query(
-                    `INSERT INTO staff_notifications (title, message)
-                     VALUES (?, ?)`,
-                    [
-                      "Appointment Completed 🏥",
-                      `Appointment ID ${id} marked as completed`,
-                    ]
+                    "SELECT id FROM users WHERE role = 'staff'",
+                    (err, staffRows) => {
+                  
+                      if (!err && staffRows.length > 0) {
+                  
+                        for (const staff of staffRows) {
+                  
+                          db.query(
+                            `INSERT INTO staff_notifications (user_id, title, message)
+                             VALUES (?, ?, ?)`,
+                            [
+                              staff.id,
+                              "Appointment Completed 🏥",
+                              `Appointment ID ${id} marked as completed`
+                            ]
+                          );
+                  
+                        }
+                  
+                      }
+                  
+                    }
                   );
 
                   conn.commit((err) => {
@@ -1344,12 +1410,28 @@ router.put("/:id/staff-reschedule", (req, res) => {
 
                                     // ✅ STAFF LOG
                                     db.query(
-                                      `INSERT INTO staff_notifications (title,message)
-                                       VALUES (?,?)`,
-                                      [
-                                        "Staff Rescheduled 🔄",
-                                        `Clinic moved ${old.patient_name}'s appointment to ${formatPH(date,time)}`,
-                                      ]
+                                      "SELECT id FROM users WHERE role = 'staff'",
+                                      (err, staffRows) => {
+                                    
+                                        if (!err && staffRows.length > 0) {
+                                    
+                                          for (const staff of staffRows) {
+                                    
+                                            db.query(
+                                              `INSERT INTO staff_notifications (user_id, title, message)
+                                               VALUES (?, ?, ?)`,
+                                              [
+                                                staff.id,
+                                                "Staff Rescheduled 🔄",
+                                                `Clinic moved ${old.patient_name}'s appointment to ${formatPH(date,time)}`
+                                              ]
+                                            );
+                                    
+                                          }
+                                    
+                                        }
+                                    
+                                      }
                                     );
 
                                     // ✅ PATIENT NOTIFICATION

@@ -98,15 +98,16 @@ router.get("/staff", (req, res) => {
   db.query(
     `
     SELECT 
-  id,
-  title,
-  message,
-  DATE_FORMAT(
-    created_at + INTERVAL 8 HOUR,
-    '%b %d, %Y, %h:%i %p'
-  ) AS created_at
+      id,
+      title,
+      message,
+      is_read,
+      DATE_FORMAT(
+        created_at + INTERVAL 8 HOUR,
+        '%b %d, %Y, %h:%i %p'
+      ) AS created_at
     FROM staff_notifications
-    ORDER BY created_at DESC
+    ORDER BY staff_notifications.created_at DESC
     LIMIT 50
     `,
     (err, rows) => {
@@ -126,6 +127,46 @@ router.get("/staff", (req, res) => {
 
 });
 
+/* MARK ALL STAFF NOTIFICATIONS AS READ */
+router.put("/staff/read", (req, res) => {
+
+  db.query(
+    "UPDATE staff_notifications SET is_read = 1",
+    (err) => {
+
+      if (err) {
+        console.error("STAFF READ ERROR:", err);
+        return res.json({ success:false });
+      }
+
+      res.json({ success:true });
+
+    }
+  );
+
+});
+
+/* DELETE SINGLE STAFF NOTIFICATION */
+router.delete("/staff/:id", (req, res) => {
+
+  const { id } = req.params;
+
+  db.query(
+    "DELETE FROM staff_notifications WHERE id = ?",
+    [id],
+    (err) => {
+
+      if (err) {
+        console.error("DELETE STAFF ERROR:", err);
+        return res.json({ success:false });
+      }
+
+      res.json({ success:true });
+
+    }
+  );
+
+});
 
 /* GET MUTE STATUS */
 router.get("/mute/:userId", (req, res) => {
@@ -189,7 +230,7 @@ router.get("/:userId", (req, res) => {
   ) AS created_at
     FROM notifications
     WHERE user_id = ?
-    ORDER BY created_at DESC
+    ORDER BY notifications.created_at DESC
     LIMIT 50
     `,
     [userId],
