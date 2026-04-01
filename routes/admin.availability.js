@@ -48,8 +48,8 @@ router.get("/:doctorId", (req, res) => {
     WHEN (total_slots - booked_slots) <= 0 THEN 0
 
     -- 🔥 ignore past time slots (MAIN FIX)
-    WHEN DATE(date) = CONVERT_TZ(CURDATE(), '+00:00', '+08:00')
-     AND time_value <= CONVERT_TZ(CURTIME(), '+00:00', '+08:00') THEN 0
+   WHEN DATE(date) = CURDATE()
+ AND time_value <= ADDTIME(CURTIME(), '08:00:00')
     -- ✅ count valid future slots
     ELSE (total_slots - booked_slots)
   END
