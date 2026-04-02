@@ -7,7 +7,7 @@ router.get("/", async (req, res) => {
 
     /* MOST USED SERVICE */
     const [service] = await db.promise().query(`
-      SELECT s.name, COUNT(a.id) AS total
+      SELECT s.name, s.image, COUNT(a.id) AS total
       FROM appointments a
       LEFT JOIN services s ON s.id = a.service_id
       GROUP BY s.name
@@ -17,7 +17,7 @@ router.get("/", async (req, res) => {
 
     /* DOCTOR WITH MOST WORKLOAD */
     const [doctor] = await db.promise().query(`
-      SELECT d.name, COUNT(a.id) AS total
+      SELECT d.name, d.image, COUNT(a.id) AS total
       FROM appointments a
       JOIN doctors d ON d.id = a.doctor
       GROUP BY d.id
@@ -57,8 +57,20 @@ router.get("/", async (req, res) => {
     res.json({
       success: true,
       insights: {
-        mostUsedService: service[0]?.name || null,
-        topDoctor: doctor[0]?.name || null,
+        mostUsedService: service[0]
+          ? {
+              name: service[0].name,
+              image: service[0].image,
+            }
+          : null,
+      
+        topDoctor: doctor[0]
+          ? {
+              name: doctor[0].name,
+              image: doctor[0].image,
+            }
+          : null,
+      
         bestAppointmentTime: formatHour(bestAppointment[0]?.hour),
         bestVisitTime: formatHour(bestVisit[0]?.hour),
       },
