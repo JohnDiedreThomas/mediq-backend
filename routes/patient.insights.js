@@ -9,8 +9,8 @@ router.get("/", async (req, res) => {
     const [service] = await db.promise().query(`
       SELECT s.name, s.image, COUNT(a.id) AS total
       FROM appointments a
-      LEFT JOIN services s ON s.id = a.service_id
-      GROUP BY s.name
+      LEFT JOIN services s  ON s.id = a.service_id
+      GROUP BY s.id
       ORDER BY total DESC
       LIMIT 1
     `);
@@ -27,9 +27,9 @@ router.get("/", async (req, res) => {
 
     /* BEST APPOINTMENT TIME */
     const [bestAppointment] = await db.promise().query(`
-      SELECT HOUR(time) AS hour, COUNT(*) AS total
+      SELECT HOUR(STR_TO_DATE(time,'%h:%i %p')) AS hour, COUNT(*) AS total
       FROM appointments
-      WHERE HOUR(time) BETWEEN 7 AND 23
+      WHERE HOUR(STR_TO_DATE(time,'%h:%i %p')) BETWEEN 7 AND 23
       GROUP BY hour
       ORDER BY total ASC
       LIMIT 1
@@ -46,6 +46,32 @@ router.get("/", async (req, res) => {
       LIMIT 1
     `);
 
+    /* TOP RATED DOCTOR */
+const [topRatedDoctor] = await db.promise().query(`
+  SELECT 
+    d.name,
+    d.image,
+    ROUND(AVG(r.rating),1) AS avg_rating
+  FROM doctors d
+  LEFT JOIN doctor_reviews r ON r.doctor_id = d.id
+  GROUP BY d.id
+  HAVING avg_rating IS NOT NULL
+  ORDER BY avg_rating DESC
+  LIMIT 1
+`);
+
+/* BUSIEST HOUR (PEAK) */
+const [busiestHour] = await db.promise().query(`
+  SELECT 
+    HOUR(arrived_at) AS hour,
+    COUNT(*) AS total
+  FROM appointments
+  WHERE arrived_at IS NOT NULL
+  GROUP BY hour
+  ORDER BY total DESC
+  LIMIT 1
+`);
+
     const formatHour = (h) =>
       h != null
         ? new Date(0, 0, 0, h).toLocaleTimeString([], {
@@ -60,16 +86,28 @@ router.get("/", async (req, res) => {
         mostUsedService: service[0]
           ? {
               name: service[0].name,
-              image: service[0].image,
+              image: service[0].image || null,
             }
           : null,
       
         topDoctor: doctor[0]
           ? {
               name: doctor[0].name,
-              image: doctor[0].image,
+              image: doctor[0].image || null,
             }
           : null,
+
+          topRatedDoctor: topRatedDoctor.length
+  ? {
+      name: topRatedDoctor[0].name,
+      image: topRatedDoctor[0].image || null,
+      rating: topRatedDoctor[0].avg_rating,
+    }
+  : null,
+
+  busiestHour: busiestHour.length
+  ? formatHour(busiestHour[0].hour)
+  : null,
       
         bestAppointmentTime: formatHour(bestAppointment[0]?.hour),
         bestVisitTime: formatHour(bestVisit[0]?.hour),
