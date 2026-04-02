@@ -56,6 +56,7 @@ router.get("/", async (req, res) => {
       "no_show",
       "approved",
       "pending",
+      "arrived",
     ];
 
     const statusCounts = ALL_STATUSES.map((status) => {
