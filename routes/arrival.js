@@ -88,12 +88,12 @@ router.post("/", (req, res) => {
             db.query(
               `UPDATE appointments
                SET arrived = 1,
+                   status = 'arrived',
                    arrived_at = NOW(),
                    arrival_stage = 'nearby'
                WHERE user_id = ?
                AND status IN ('approved','arrived')
-               AND DATE(date) = DATE(CONVERT_TZ(NOW(), '+00:00', '+08:00'))
-               AND arrived = 0`,
+               AND DATE(date) = DATE(CONVERT_TZ(NOW(), '+00:00', '+08:00'))`,
               [userId],
               (err, result) => {
 
@@ -157,7 +157,8 @@ router.post("/", (req, res) => {
 
             db.query(
               `UPDATE appointments
-               SET arrived = 0
+              SET arrived = 0,
+    arrived_at = NULL
                WHERE user_id = ?
                AND status IN ('approved','arrived')
                AND DATE(date) = DATE(CONVERT_TZ(NOW(), '+00:00', '+08:00'))`,
@@ -247,11 +248,16 @@ router.get("/nearby", (req, res) => {
             p.longitude
           );
         
-          let waitingMinutes = null;
-          if (p.arrived_at && !isNaN(new Date(p.arrived_at))) {
-            const diff = Date.now() - new Date(p.arrived_at).getTime();
-            waitingMinutes = Math.floor(diff / 60000);
-          }
+          let waitingMinutes = 0;
+
+if (p.arrived_at) {
+  const arrivedTime = new Date(p.arrived_at);
+
+  if (!isNaN(arrivedTime.getTime())) {
+    const diff = Date.now() - arrivedTime.getTime();
+    waitingMinutes = Math.max(0, Math.floor(diff / 60000));
+  }
+}
         
           const lastSeenSeconds = p.last_location_update
             ? Math.floor((Date.now() - new Date(p.last_location_update).getTime()) / 1000)
@@ -274,8 +280,8 @@ router.get("/nearby", (req, res) => {
         const longWait = patients.filter(p => (p.waitingMinutes ?? 0) > 10).length;
         
         const waits = patients
-          .map(p => p.waitingMinutes || 0)
-          .filter(w => w > 0);
+        .map(p => Number(p.waitingMinutes) || 0)
+        .filter(w => w >= 0);
         
         const longestWait = waits.length ? Math.max(...waits) : 0;
         
