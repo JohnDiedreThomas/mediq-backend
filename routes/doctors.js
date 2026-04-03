@@ -31,12 +31,28 @@ router.get("/by-service/:serviceId", (req, res) => {
   const { serviceId } = req.params;
 
   const sql = `
-    SELECT d.id, d.name, d.specialty, d.image
-    FROM doctors d
-    JOIN services s ON LOWER(d.specialty) LIKE CONCAT('%', LOWER(s.category), '%')
-    WHERE s.id = ?
-      AND d.is_active = 1
-  `;
+  SELECT 
+    d.id, 
+    d.name, 
+    d.specialty, 
+    d.image,
+
+    IFNULL(AVG(r.rating), 0) AS avg_rating,
+    COUNT(r.id) AS review_count
+
+  FROM doctors d
+
+  JOIN services s 
+    ON LOWER(d.specialty) LIKE CONCAT('%', LOWER(s.category), '%')
+
+  LEFT JOIN doctor_reviews r 
+    ON d.id = r.doctor_id
+
+  WHERE s.id = ?
+    AND d.is_active = 1
+
+  GROUP BY d.id, d.name, d.specialty, d.image
+`;
 
   db.query(sql, [serviceId], (err, results) => {
     if (err) {
