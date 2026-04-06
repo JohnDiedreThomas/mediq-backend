@@ -1,7 +1,6 @@
 const crypto = require("crypto");
 const express = require("express");
 const bcrypt = require("bcryptjs");
-const jwt = require("jsonwebtoken");
 const db = require("../db");
 
 const router = express.Router();
@@ -114,11 +113,6 @@ if (user.status && user.status !== "active") {
     if (!isMatch) {
       return res.json({ success: false });
     }
-    const token = jwt.sign(
-      { id: user.id, role: user.role },
-      process.env.JWT_SECRET || "secretkey",
-      { expiresIn: "7d" }
-    );
 
     return res.json({
       success: true,
@@ -129,7 +123,6 @@ if (user.status && user.status !== "active") {
         phone: user.phone,
         role: user.role,
       },
-      token, // 🔥 ADD THIS LINE
     });
   });
 });
