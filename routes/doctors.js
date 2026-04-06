@@ -35,7 +35,7 @@ router.get("/by-service/:serviceId", (req, res) => {
     d.id, 
     d.name, 
     d.specialty, 
-    d.image,
+    d.image, 
 
     IFNULL(AVG(r.rating), 0) AS avg_rating,
     COUNT(r.id) AS review_count
