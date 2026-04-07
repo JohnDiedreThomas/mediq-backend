@@ -92,7 +92,7 @@ router.post("/", (req, res) => {
                    arrived_at = NOW(),
                    arrival_stage = 'nearby'
                WHERE user_id = ?
-               AND status IN ('approved','arrived')
+               AND status = 'approved'
                AND DATE(date) = DATE(CONVERT_TZ(NOW(), '+00:00', '+08:00'))`,
               [userId],
               (err, result) => {
