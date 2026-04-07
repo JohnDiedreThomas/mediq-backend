@@ -212,8 +212,7 @@ router.get("/nearby", (req, res) => {
        a.status  
     FROM users u
     JOIN appointments a ON a.user_id = u.id
-    WHERE a.arrived = 1
-    AND a.status IN ('approved','arrived')
+WHERE a.status IN ('approved','arrived')
     AND DATE(a.date) = DATE(CONVERT_TZ(NOW(), '+00:00', '+08:00'))
     AND u.latitude IS NOT NULL
     AND u.longitude IS NOT NULL
@@ -226,54 +225,47 @@ router.get("/nearby", (req, res) => {
         return res.status(500).json({ success: false });
       }
 
-      const inside = rows.filter(p => {
-        
+     
 
-        const d = getDistance(
-          CLINIC.latitude,
-          CLINIC.longitude,
-          p.latitude,
-          p.longitude
-        );
+      const patients = rows
+  .map(p => {
+    const distance = getDistance(
+      CLINIC.latitude,
+      CLINIC.longitude,
+      p.latitude,
+      p.longitude
+    );
 
-        return d <= CLINIC.radius + BUFFER;
-      });
+    let waitingMinutes = 0;
 
-        const patients = inside.map(p => {
+    if (p.arrived_at) {
+      const arrivedTime = new Date(p.arrived_at);
+      const now = Date.now();
+      const diff = now - arrivedTime.getTime();
 
-          const distance = getDistance(
-            CLINIC.latitude,
-            CLINIC.longitude,
-            p.latitude,
-            p.longitude
-          );
-        
-          let waitingMinutes = 0;
+      if (diff < 0) {
+        waitingMinutes = 0;
+      } else {
+        waitingMinutes = Math.min(180, Math.floor(diff / 60000));
+      }
+    }
 
-if (p.arrived_at) {
-  const arrivedTime = new Date(p.arrived_at);
+    const lastSeenSeconds = p.last_location_update
+      ? Math.floor((Date.now() - new Date(p.last_location_update).getTime()) / 1000)
+      : null;
 
-  if (!isNaN(arrivedTime.getTime())) {
-    const diff = Date.now() - arrivedTime.getTime();
-    waitingMinutes = Math.max(0, Math.floor(diff / 60000));
-  }
-}
+    const gpsStatus = lastSeenSeconds <= 60 ? "Live" : "Stale";
+
+    return {
+      ...p,
+      distance: Math.round(distance),
+      waitingMinutes,
+      lastSeenSeconds,
+      gpsStatus
+    };
+  })
+  .filter(p => p.distance <= CLINIC.radius + BUFFER);
         
-          const lastSeenSeconds = p.last_location_update
-            ? Math.floor((Date.now() - new Date(p.last_location_update).getTime()) / 1000)
-            : null;
-        
-          const gpsStatus = lastSeenSeconds <= 60 ? "Live" : "Stale";
-        
-          return {
-            ...p,
-            distance: Math.round(distance),
-            waitingMinutes,
-            lastSeenSeconds,
-            gpsStatus
-          };
-        
-        });
       
         const insideCount = patients.length;
 
