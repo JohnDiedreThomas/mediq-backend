@@ -1172,6 +1172,7 @@ router.get("/user/:user_id", (req, res) => {
         success: true,
         appointments: results,
         page,
+        hasMore: results.length === limit
       });
     }
   );
