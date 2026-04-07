@@ -2,6 +2,7 @@ const db = require("./db");
 const { sendPushNotification } = require("./pushNotification");
 const { sendPushIfAllowed } = require("./routes/appointments");
 const sentTodayReminders = new Set();
+const sentReminders = new Set();
 /*
 |-----------------------------------------------------------
 | Convert time safely (handles Unicode spaces)
@@ -233,19 +234,22 @@ if (
           |---------------------------------------------------
           */
         
-          if (
-            (
-              (diffMinutes <= 65 && diffMinutes > 50)
-(diffMinutes <= 35 && diffMinutes > 20)
-            )
-          ) {
+          const key = appt.id + "_" + Math.floor(diffMinutes / 10);
+
+if (
+  (
+    (diffMinutes <= 65 && diffMinutes > 50) ||
+    (diffMinutes <= 35 && diffMinutes > 20)
+  ) &&
+  !sentReminders.has(key)
+) {
             if (appt.push_token) {
 
               let label = "";
 
-              if (diffMinutes <= 60 && diffMinutes > 55) {
+              if (diffMinutes <= 65 && diffMinutes > 50) {
                 label = "1 Hour";
-              } else if (diffMinutes <= 30 && diffMinutes > 25) {
+              } else if (diffMinutes <= 35 && diffMinutes > 20) {
                 label = "30 Minutes";
               }
 
@@ -258,6 +262,7 @@ if (
               );
 
               console.log("✅ Reminder sent:", appt.id, label);
+              sentReminders.add(key);
             }
 
             await new Promise((resolve) => {
