@@ -70,4 +70,65 @@ u6.name AS rescheduled_by_name
   });
 });
 
+
+// ✅ PAGINATED USER APPOINTMENTS (FOR PATIENT DETAIL)
+router.get("/user-appointments/:user_id", (req, res) => {
+  const { user_id } = req.params;
+  const page = Number(req.query.page) || 1;
+  const limit = 10;
+  const offset = (page - 1) * limit;
+
+  db.query(
+    `
+    SELECT 
+      a.id,
+      a.date,
+      a.time,
+      a.status,
+      a.rescheduled,
+      a.patient_name,
+      a.patient_birthdate,
+      a.patient_age,
+      a.patient_gender,
+      a.connection_to_clinic,
+      a.patient_notes,
+      s.name AS service,
+      u.id AS user_id,
+      u.name AS account_name,
+      u.email,
+      u.phone,
+      d.name AS doctor_name,
+      u1.name AS approved_by_name,
+      u2.name AS cancelled_by_name,
+      u3.name AS completed_by_name,
+      u4.name AS arrived_by_name,
+      u5.name AS no_show_by_name,
+      u6.name AS rescheduled_by_name
+    FROM appointments a
+    JOIN users u ON u.id = a.user_id
+    LEFT JOIN doctors d ON d.id = a.doctor
+    LEFT JOIN users u1 ON u1.id = a.approved_by
+    LEFT JOIN users u2 ON u2.id = a.cancelled_by
+    LEFT JOIN users u3 ON u3.id = a.completed_by
+    LEFT JOIN users u4 ON u4.id = a.arrived_by
+    LEFT JOIN users u5 ON u5.id = a.no_show_by
+    LEFT JOIN users u6 ON u6.id = a.rescheduled_by
+    LEFT JOIN services s ON s.id = a.service_id
+    WHERE a.user_id = ?
+    ORDER BY a.date DESC, a.time DESC
+    LIMIT ? OFFSET ?
+    `,
+    [user_id, limit, offset],
+    (err, results) => {
+      if (err) return res.json({ success: false });
+
+      res.json({
+        success: true,
+        appointments: results,
+        hasMore: results.length === limit
+      });
+    }
+  );
+});
+
 module.exports = router;
