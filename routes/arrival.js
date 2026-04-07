@@ -160,8 +160,7 @@ router.post("/", (req, res) => {
               SET arrived = 0,
     arrived_at = NULL
                WHERE user_id = ?
-               AND status = 'approved'
-AND arrived = 0
+               AND status IN ('approved','arrived')
                AND DATE(date) = DATE(CONVERT_TZ(NOW(), '+00:00', '+08:00'))`,
               [userId]
             );
