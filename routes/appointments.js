@@ -1137,7 +1137,8 @@ router.get("/", (req, res) => {
       res.json({
         success: true,
         appointments: results,
-        page
+        page,
+        hasMore: results.length === limit
       });
 
     }
