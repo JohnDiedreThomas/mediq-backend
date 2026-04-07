@@ -239,15 +239,11 @@ WHERE a.status IN ('approved','arrived')
     let waitingMinutes = 0;
 
     if (p.arrived_at) {
-      const arrivedTime = new Date(p.arrived_at);
+      const arrivedTime = new Date(p.arrived_at + "Z").getTime();
       const now = Date.now();
-      const diff = now - arrivedTime.getTime();
-
-      if (diff < 0) {
-        waitingMinutes = 0;
-      } else {
-        waitingMinutes = Math.floor(diff / 60000);
-      }
+    
+      const diff = Math.max(0, now - arrivedTime);
+      waitingMinutes = Math.floor(diff / 60000);
     }
 
     const lastSeenSeconds = p.last_location_update
