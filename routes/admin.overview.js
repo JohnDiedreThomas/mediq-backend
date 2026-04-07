@@ -73,7 +73,7 @@ u6.name AS rescheduled_by_name
 
 // ✅ PAGINATED USER APPOINTMENTS (FOR PATIENT DETAIL)
 router.get("/user-appointments/:user_id", (req, res) => {
-  const { user_id } = req.params;
+  const user_id = Number(req.params.user_id);
   const page = Number(req.query.page) || 1;
   const limit = 10;
   const offset = (page - 1) * limit;
