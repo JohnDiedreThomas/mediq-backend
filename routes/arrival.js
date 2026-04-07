@@ -264,7 +264,7 @@ WHERE a.status IN ('approved','arrived')
       gpsStatus
     };
   })
-  .filter(p => p.distance <= CLINIC.radius + BUFFER);
+  .filter(p => p.distance <= CLINIC.radius + 15);
         
       
         const insideCount = patients.length;
