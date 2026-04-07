@@ -1,7 +1,7 @@
 const db = require("./db");
 const { sendPushNotification } = require("./pushNotification");
 const { sendPushIfAllowed } = require("./routes/appointments");
-
+const sentTodayReminders = new Set();
 /*
 |-----------------------------------------------------------
 | Convert time safely (handles Unicode spaces)
@@ -145,6 +145,27 @@ function startReminderWorker() {
               console.error("❌ Approved reminder error:", error);
             }
           }
+
+
+          // =======================================================
+// 📅 APPROVED → PATIENT 1 DAY REMINDER (NO DB COLUMN)
+// =======================================================
+if (
+  appt.status === "approved" &&
+  diffHours <= 24 &&
+  diffHours > 23 &&
+  !sentTodayReminders.has(appt.id)
+) {
+  sentTodayReminders.add(appt.id);
+
+  console.log("📅 Patient 1-day reminder:", appt.id);
+
+  await sendPushIfAllowed(
+    appt.user_id,
+    "📅 Appointment Reminder",
+    `Reminder: You have an appointment tomorrow at ${appt.time} for ${appt.service}`
+  );
+}
           
           // =======================================================
           // ⚠️ PENDING → STAFF REMINDER
@@ -213,10 +234,9 @@ function startReminderWorker() {
           */
         
           if (
-            appt.reminder_sent === 0 &&
             (
-              (diffMinutes <= 60 && diffMinutes > 55) ||
-(diffMinutes <= 30 && diffMinutes > 25)
+              (diffMinutes <= 65 && diffMinutes > 50)
+(diffMinutes <= 35 && diffMinutes > 20)
             )
           ) {
             if (appt.push_token) {
