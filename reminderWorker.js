@@ -223,9 +223,9 @@ function startReminderWorker() {
 
               let label = "";
 
-              if (diffMinutes <= 60 && diffMinutes > 59) {
+              if (diffMinutes <= 60 && diffMinutes > 55) {
                 label = "1 Hour";
-              } else if (diffMinutes <= 30 && diffMinutes > 29) {
+              } else if (diffMinutes <= 30 && diffMinutes > 25) {
                 label = "30 Minutes";
               }
 

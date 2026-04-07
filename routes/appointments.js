@@ -1107,11 +1107,16 @@ router.get("/single/:id", (req, res) => {
 |--------------------------------------------------------------------------|
 */
 router.get("/", (req, res) => {
+
+  const page = Number(req.query.page) || 1;
+  const limit = Number(req.query.limit) || 10;
+  const offset = (page - 1) * limit;
+
   db.query(
     `
     SELECT 
       a.*,
-       u.name AS account_name,  
+      u.name AS account_name,  
       u.phone AS patient_phone,
       d.name AS doctor_name,
       d.specialty AS doctor_specialty
@@ -1119,8 +1124,11 @@ router.get("/", (req, res) => {
     LEFT JOIN doctors d ON d.id = a.doctor
     LEFT JOIN users u ON u.id = a.user_id
     ORDER BY a.date DESC, a.time DESC
+    LIMIT ? OFFSET ?
     `,
+    [limit, offset],
     (err, results) => {
+
       if (err) {
         console.error("STAFF APPOINTMENTS ERROR:", err);
         return res.status(500).json({ success: false });
@@ -1129,7 +1137,9 @@ router.get("/", (req, res) => {
       res.json({
         success: true,
         appointments: results,
+        page
       });
+
     }
   );
 });
