@@ -169,6 +169,9 @@ router.post("/", (req, res) => {
 
           // ⭐ REALTIME UPDATE
           const io = req.app.get("io");
+          console.log("🔥 IO OBJECT:", io ? "EXISTS" : "MISSING");
+console.log("🚀 EMITTING:", userId, latitude, longitude);
+
           if (io) {
             io.emit("patientUpdate", {
               userId,
