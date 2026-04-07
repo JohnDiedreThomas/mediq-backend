@@ -216,7 +216,7 @@ WHERE a.status IN ('approved','arrived')
     AND DATE(a.date) = DATE(CONVERT_TZ(NOW(), '+00:00', '+08:00'))
     AND u.latitude IS NOT NULL
     AND u.longitude IS NOT NULL
-    AND u.last_location_update > NOW() - INTERVAL 10 MINUTE
+    AND u.last_location_update IS NOT NULL
     `,
     (err, rows) => {
 
@@ -246,7 +246,7 @@ WHERE a.status IN ('approved','arrived')
       if (diff < 0) {
         waitingMinutes = 0;
       } else {
-        waitingMinutes = Math.min(180, Math.floor(diff / 60000));
+        waitingMinutes = Math.floor(diff / 60000);
       }
     }
 
