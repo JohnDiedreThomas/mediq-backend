@@ -17,6 +17,9 @@ function sendPushIfAllowed(userId, title, message) {
         if (user.mute_notifications) return resolve();
 
         if (user.push_token) {
+          console.log("🔍 USER ID:", userId);
+console.log("🔍 PUSH TOKEN:", user.push_token);
+console.log("🔍 MUTE:", user.mute_notifications);
           try {
             console.log("PUSH TO:", userId, user.push_token);// ✅ DEBUG
             await sendPushNotification(user.push_token, title, message);
