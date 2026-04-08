@@ -1206,9 +1206,11 @@ router.put("/:id/status", (req, res) => {
 
   db.query(
     `UPDATE appointments
-     SET status = ?, ${column} = ?
-     WHERE id = ?`,
-    [status, staffId, id],
+SET status = ?, 
+    ${column} = ?,
+    arrived_at = IF(? = 'arrived', NOW(), arrived_at)
+WHERE id = ?`,
+[status, staffId, status, id],
     (err) => {
       if (err) {
         console.error(err);
