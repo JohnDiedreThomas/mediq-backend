@@ -270,14 +270,13 @@ LIMIT 1
   
   
  /* 6️⃣.3️⃣ REAL AVERAGE WAIT TIME (FROM ARRIVAL SYSTEM) */
-const [waitResult] = await db.promise().query(`
-  SELECT AVG(TIMESTAMPDIFF(MINUTE, arrived_at, completed_at)) AS avgWait
-FROM appointments
-WHERE status = 'completed'
-AND arrived_at IS NOT NULL
-AND completed_at IS NOT NULL
-AND DATE(date) >= CURDATE() - INTERVAL ? DAY
-  `);
+ const [waitResult] = await db.promise().query(`
+  SELECT AVG(TIMESTAMPDIFF(MINUTE, arrived_at, NOW())) AS avgWait
+  FROM appointments
+  WHERE status = 'completed'
+  AND arrived_at IS NOT NULL
+  AND DATE(date) >= CURDATE() - INTERVAL ? DAY
+`, [days]);
   
   const avgWaitTime = Math.round(waitResult[0].avgWait || 0);
   
