@@ -88,12 +88,13 @@ router.post("/", (req, res) => {
             db.query(
               `UPDATE appointments
                SET arrived = 1,
-                   status = 'arrived',
                    arrived_at = NOW(),
                    arrival_stage = 'nearby'
                WHERE user_id = ?
-               AND status = 'approved'
-               AND DATE(date) = DATE(CONVERT_TZ(NOW(), '+00:00', '+08:00'))`,
+AND status = 'approved'
+AND arrived = 0
+AND arrived_at IS NULL
+AND DATE(date) = DATE(CONVERT_TZ(NOW(), '+00:00', '+08:00'))`,
               [userId],
               (err, result) => {
 
@@ -158,7 +159,9 @@ router.post("/", (req, res) => {
             db.query(
               `UPDATE appointments
               SET arrived = 0,
-    arrived_at = NULL
+                  arrived_at = NULL,
+                  status = 'approved',
+                  arrival_stage = NULL
                WHERE user_id = ?
                AND status IN ('approved','arrived')
                AND DATE(date) = DATE(CONVERT_TZ(NOW(), '+00:00', '+08:00'))`,
@@ -253,7 +256,7 @@ WHERE a.status IN ('approved','arrived')
       ? Math.floor((Date.now() - new Date(p.last_location_update).getTime()) / 1000)
       : null;
 
-    const gpsStatus = lastSeenSeconds <= 60 ? "Live" : "Stale";
+      const gpsStatus = lastSeenSeconds <= 120 ? "Live" : "Stale";
 
     return {
       ...p,
