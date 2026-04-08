@@ -183,7 +183,7 @@ const rescheduleRate =
 HOUR(arrived_at) AS hour,
 COUNT(*) AS total
 FROM appointments
-WHERE status = 'arrived'
+WHERE status IN ('arrived', 'completed')
 AND arrived_at IS NOT NULL
 AND date >= CURDATE() - INTERVAL ? DAY
 GROUP BY hour
@@ -229,7 +229,7 @@ const [bestVisit] = await db.promise().query(
 HOUR(arrived_at) AS hour,
 COUNT(*) AS total
 FROM appointments
-WHERE status = 'arrived'
+WHERE status IN ('arrived', 'completed')
 AND arrived_at IS NOT NULL
 AND date >= CURDATE() - INTERVAL ? DAY
 GROUP BY hour
