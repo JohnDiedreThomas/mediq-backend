@@ -88,12 +88,11 @@ router.post("/", (req, res) => {
             db.query(
               `UPDATE appointments
                SET arrived = 1,
-                   arrived_at = NOW(),
+                   arrived_at = IFNULL(arrived_at, NOW()),
                    arrival_stage = 'nearby'
                WHERE user_id = ?
 AND status = 'approved'
 AND arrived = 0
-AND arrived_at IS NULL
 AND DATE(date) = DATE(CONVERT_TZ(NOW(), '+00:00', '+08:00'))`,
               [userId],
               (err, result) => {
@@ -159,8 +158,6 @@ AND DATE(date) = DATE(CONVERT_TZ(NOW(), '+00:00', '+08:00'))`,
             db.query(
               `UPDATE appointments
               SET arrived = 0,
-                  arrived_at = NULL,
-                  status = 'approved',
                   arrival_stage = NULL
                WHERE user_id = ?
                AND status IN ('approved','arrived')
