@@ -183,7 +183,7 @@ const rescheduleRate =
 HOUR(arrived_at) AS hour,
 COUNT(*) AS total
 FROM appointments
-WHERE arrived = 1
+WHERE status = 'arrived'
 AND arrived_at IS NOT NULL
 AND date >= CURDATE() - INTERVAL ? DAY
 GROUP BY hour
@@ -229,7 +229,7 @@ const [bestVisit] = await db.promise().query(
 HOUR(arrived_at) AS hour,
 COUNT(*) AS total
 FROM appointments
-WHERE arrived = 1
+WHERE status = 'arrived'
 AND arrived_at IS NOT NULL
 AND date >= CURDATE() - INTERVAL ? DAY
 GROUP BY hour
@@ -271,11 +271,12 @@ LIMIT 1
   
  /* 6️⃣.3️⃣ REAL AVERAGE WAIT TIME (FROM ARRIVAL SYSTEM) */
 const [waitResult] = await db.promise().query(`
-  SELECT AVG(TIMESTAMPDIFF(MINUTE, arrived_at, NOW())) AS avgWait
-  FROM appointments
-  WHERE arrived = 1
-  AND arrived_at IS NOT NULL
-  AND DATE(date) = CURDATE()
+  SELECT AVG(TIMESTAMPDIFF(MINUTE, arrived_at, completed_at)) AS avgWait
+FROM appointments
+WHERE status = 'completed'
+AND arrived_at IS NOT NULL
+AND completed_at IS NOT NULL
+AND DATE(date) >= CURDATE() - INTERVAL ? DAY
   `);
   
   const avgWaitTime = Math.round(waitResult[0].avgWait || 0);
@@ -285,8 +286,8 @@ const [waitResult] = await db.promise().query(`
   const [insideResult] = await db.promise().query(`
   SELECT COUNT(*) AS insideCount
   FROM appointments
-  WHERE arrived = 1
-  AND DATE(date) = CURDATE()
+WHERE status = 'arrived'
+AND DATE(date) = CURDATE()
   `);
   
   const avgPatientsInside = insideResult[0].insideCount || 0;
