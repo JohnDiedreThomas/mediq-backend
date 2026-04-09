@@ -6,12 +6,12 @@ const { sendPushNotification } = require("../pushNotification");
 const CLINIC = {
   latitude: 13.236965,
   longitude: 123.775804,
-  radius: 50,
+  radius: 200, 
 };
 
 
 
-const BUFFER = 5; // meters
+const BUFFER = 20; // meters
 
 
 function getDistance(lat1, lon1, lat2, lon2) {
@@ -263,7 +263,7 @@ WHERE a.status IN ('approved','arrived')
       gpsStatus
     };
   })
-  .filter(p => p.distance <= CLINIC.radius + 15);
+  .filter(p => p.distance <= CLINIC.radius + BUFFER);
         
       
         const insideCount = patients.length;
