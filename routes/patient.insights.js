@@ -72,12 +72,12 @@ const [busiestHour] = await db.promise().query(`
   LIMIT 1
 `);
 
-/* MOST BOOKING HOUR */
 const [mostBookingHour] = await db.promise().query(`
   SELECT 
-    HOUR(time) AS hour,
+    HOUR(STR_TO_DATE(time,'%h:%i %p')) AS hour,
     COUNT(*) AS total
   FROM appointments
+  WHERE time IS NOT NULL
   GROUP BY hour
   ORDER BY total DESC
   LIMIT 1
