@@ -75,7 +75,7 @@ const [busiestHour] = await db.promise().query(`
 /* MOST BOOKING HOUR */
 const [mostBookingHour] = await db.promise().query(`
   SELECT 
-    HOUR(STR_TO_DATE(time,'%h:%i %p')) AS hour,
+    HOUR(time) AS hour,
     COUNT(*) AS total
   FROM appointments
   GROUP BY hour
