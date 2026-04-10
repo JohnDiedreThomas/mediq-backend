@@ -72,6 +72,17 @@ const [busiestHour] = await db.promise().query(`
   LIMIT 1
 `);
 
+/* MOST BOOKING HOUR */
+const [mostBookingHour] = await db.promise().query(`
+  SELECT 
+    HOUR(STR_TO_DATE(time,'%h:%i %p')) AS hour,
+    COUNT(*) AS total
+  FROM appointments
+  GROUP BY hour
+  ORDER BY total DESC
+  LIMIT 1
+`);
+
     const formatHour = (h) =>
       h != null
         ? new Date(0, 0, 0, h).toLocaleTimeString([], {
@@ -107,6 +118,10 @@ const [busiestHour] = await db.promise().query(`
 
   busiestHour: busiestHour.length
   ? formatHour(busiestHour[0].hour)
+  : null,
+
+  mostBookingHour: mostBookingHour.length
+  ? formatHour(mostBookingHour[0].hour)
   : null,
       
         bestAppointmentTime: formatHour(bestAppointment[0]?.hour),
