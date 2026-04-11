@@ -217,7 +217,7 @@ ORDER BY total DESC
         OR STR_TO_DATE(time,'%H:%i') IS NOT NULL
       )
       GROUP BY hour
-      ORDER BY total ASC
+      ORDER BY total ASC, hour ASC
       LIMIT 1
     `, [days]);
   
