@@ -211,7 +211,6 @@ ORDER BY total DESC
         COUNT(*) AS total
       FROM appointments
       WHERE time IS NOT NULL
-      AND date >= CURDATE() - INTERVAL ? DAY
       AND (
         STR_TO_DATE(time,'%h:%i %p') IS NOT NULL
         OR STR_TO_DATE(time,'%H:%i') IS NOT NULL
@@ -219,7 +218,7 @@ ORDER BY total DESC
       GROUP BY hour
       ORDER BY total ASC, hour ASC
       LIMIT 1
-    `, [days]);
+    `);
   
   const bestAppointmentHour =
   bestAppointment.length && bestAppointment[0].hour !== null
