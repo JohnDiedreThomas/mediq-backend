@@ -27,10 +27,22 @@ router.get("/", async (req, res) => {
 
     /* BEST APPOINTMENT TIME */
     const [bestAppointment] = await db.promise().query(`
-      SELECT HOUR(STR_TO_DATE(time,'%h:%i %p')) AS hour, COUNT(*) AS total
+      SELECT 
+        HOUR(
+          COALESCE(
+            STR_TO_DATE(time,'%h:%i %p'),
+            STR_TO_DATE(time,'%H:%i')
+          )
+        ) AS hour,
+        COUNT(*) AS total
       FROM appointments
-      WHERE HOUR(STR_TO_DATE(time,'%h:%i %p')) BETWEEN 7 AND 23
+      WHERE time IS NOT NULL
+      AND (
+        STR_TO_DATE(time,'%h:%i %p') IS NOT NULL
+        OR STR_TO_DATE(time,'%H:%i') IS NOT NULL
+      )
       GROUP BY hour
+      HAVING hour BETWEEN 7 AND 23
       ORDER BY total ASC
       LIMIT 1
     `);
