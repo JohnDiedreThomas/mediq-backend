@@ -43,7 +43,7 @@ router.get("/", async (req, res) => {
       )
       GROUP BY hour
       HAVING hour BETWEEN 7 AND 23
-      ORDER BY total ASC
+      ORDER BY total ASC, hour ASC
       LIMIT 1
     `);
 
