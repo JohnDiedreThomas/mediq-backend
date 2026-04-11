@@ -144,23 +144,30 @@ const rescheduleRate =
     );
 
   /* 5️⃣.1️⃣ PEAK BOOKING HOURS (most scheduled times) */
-  const [peakBookingHours] = await db.promise().query(
-    `
+  const [peakBookingHours] = await db.promise().query(`
     SELECT 
-    HOUR(STR_TO_DATE(time,'%h:%i %p')) AS hour,
-    COUNT(*) AS total
+      HOUR(
+        COALESCE(
+          STR_TO_DATE(time,'%h:%i %p'),
+          STR_TO_DATE(time,'%H:%i')
+        )
+      ) AS hour,
+      COUNT(*) AS total
     FROM appointments
     WHERE time IS NOT NULL
     AND date >= CURDATE() - INTERVAL ? DAY
+    AND (
+      STR_TO_DATE(time,'%h:%i %p') IS NOT NULL
+      OR STR_TO_DATE(time,'%H:%i') IS NOT NULL
+    )
     GROUP BY hour
     ORDER BY total DESC
     LIMIT 5
-    `,
-    [days]
-    );
+  `, [days]);
 
     const formattedPeakBookingHours = peakBookingHours.map((row) => {
-      const hour = Number(row.hour);
+      if (row.hour === null) return null;
+const hour = Number(row.hour);
       const displayHour = hour === 0
         ? "12 AM"
         : hour < 12
@@ -193,20 +200,26 @@ ORDER BY total DESC
     );
 
     /* 6️⃣.0️⃣ BEST APPOINTMENT TIME (least booked schedule hour) */
-const [bestAppointment] = await db.promise().query(
-  `
- SELECT 
-HOUR(STR_TO_DATE(time,'%h:%i %p')) AS hour,
-COUNT(*) AS total
-FROM appointments
-WHERE time IS NOT NULL
-AND date >= CURDATE() - INTERVAL ? DAY
-GROUP BY hour
-ORDER BY total ASC
-LIMIT 1
-  `,
-  [days]
-  );
+    const [bestAppointment] = await db.promise().query(`
+      SELECT 
+        HOUR(
+          COALESCE(
+            STR_TO_DATE(time,'%h:%i %p'),
+            STR_TO_DATE(time,'%H:%i')
+          )
+        ) AS hour,
+        COUNT(*) AS total
+      FROM appointments
+      WHERE time IS NOT NULL
+      AND date >= CURDATE() - INTERVAL ? DAY
+      AND (
+        STR_TO_DATE(time,'%h:%i %p') IS NOT NULL
+        OR STR_TO_DATE(time,'%H:%i') IS NOT NULL
+      )
+      GROUP BY hour
+      ORDER BY total ASC
+      LIMIT 1
+    `, [days]);
   
   const bestAppointmentHour =
   bestAppointment.length && bestAppointment[0].hour !== null
