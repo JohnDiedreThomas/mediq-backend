@@ -13,6 +13,10 @@ async function sendPushNotification(pushToken, title, body) {
     sound: "default",
     title: title,
     body: body,
+    priority: "high",
+    android: {
+      channelId: "default",
+    },
   };
 
   try {
