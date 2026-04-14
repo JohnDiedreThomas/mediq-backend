@@ -724,7 +724,7 @@ router.put("/:id/cancel", (req, res) => {
 await sendPushIfAllowed(
   appt.user_id,
   "Appointment Cancelled ❌",
-  "Your appointment has been cancelled. Contact the clinic for more info"
+  `Your appointment on ${formatPH(appt.date, appt.time)} has been cancelled. Please contact the clinic for more info.`
 );
 
 // 💾 SAVE PATIENT NOTIFICATION
@@ -734,7 +734,7 @@ conn.query(
   [
     appt.user_id,
     "Appointment Cancelled",
-    "Your appointment has been cancelled, please contact (Contact Us) the clinic for more info"
+    `Your appointment on ${formatPH(appt.date, appt.time)} has been cancelled. Please contact the clinic for more info.`
   ]
 );
 
@@ -916,7 +916,7 @@ router.put("/:id/approve", (req, res) => {
                 [
                   appt.user_id,
                   "Appointment Approved",
-                  "Your appointment has been approved by the clinic.",
+                 `Your appointment on ${formatPH(appt.date, appt.time)} has been approved by the clinic.`,
                 ]
               );
 
@@ -924,7 +924,7 @@ router.put("/:id/approve", (req, res) => {
               await sendPushIfAllowed(
                 appt.user_id,
                 "Appointment Approved ✅",
-                "Your appointment has been approved by the clinic."
+                `Your appointment on ${formatPH(appt.date, appt.time)} has been approved by the clinic.`
               );
 
               // instant reminder
@@ -1005,7 +1005,7 @@ router.put("/:id/complete", (req, res) => {
           }
 
           conn.query(
-            `SELECT user_id, patient_name FROM appointments WHERE id = ?`,
+            `SELECT user_id, patient_name, date, time FROM appointments WHERE id = ?`,
             [id],
             async (err, rows) => {   // ✅ FIX HERE
           
@@ -1022,7 +1022,7 @@ router.put("/:id/complete", (req, res) => {
               await sendPushIfAllowed(   // ✅ NOW VALID
                 userId,
                 "Appointment Completed 🏥",
-                `Your appointment for ${patientName} has been completed.`
+                `Your appointment on ${formatPH(rows[0].date, rows[0].time)} has been completed. Thank you!`
               );
                   
 
@@ -1033,7 +1033,7 @@ router.put("/:id/complete", (req, res) => {
                     [
                       userId,
                       "Appointment Completed",
-                      "Your appointment has been completed. Thank you!",
+                      `Your appointment on ${formatPH(rows[0].date, rows[0].time)} has been completed. Thank you!`,
                     ]
                   );
 
@@ -1219,7 +1219,7 @@ WHERE id = ?`,
 
       // 🔔 PUSH TO PATIENT
       db.query(
-        `SELECT a.user_id, u.push_token
+        `SELECT a.user_id, u.push_token, a.date, a.time
          FROM appointments a
          JOIN users u ON u.id = a.user_id
          WHERE a.id = ?`,
@@ -1233,7 +1233,7 @@ WHERE id = ?`,
           await sendPushIfAllowed(
             rows[0].user_id,
             "Appointment Status Update",
-            `Your appointment status is now ${status.replace("_", " ")}`
+            `Your appointment on ${formatPH(rows[0].date, rows[0].time)} has been marked as ${status.replace("_", " ")}`
           );
         
           db.query(
@@ -1242,7 +1242,7 @@ WHERE id = ?`,
             [
               rows[0].user_id,
               "Appointment Status Update",
-              `Your appointment status is now ${status.replace("_"," ")}`
+              `Your appointment on ${formatPH(rows[0].date, rows[0].time)} has been marked as ${status.replace("_"," ")}`
             ]
           );
         }
