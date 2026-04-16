@@ -14,7 +14,7 @@ router.get("/login-test", (req, res) => {
    REGISTER
 ===================== */
 router.post("/register", async (req, res) => {
-  const { name, email, phone, password } = req.body;
+  const { name, email, phone, password, birthdate, gender } = req.body;
   const cleanEmail = email.trim().toLowerCase();
 
   if (!name || !email || !phone || !password) {
@@ -40,9 +40,9 @@ router.post("/register", async (req, res) => {
 
       // 3️⃣ Insert user
       const insertSql =
-        "INSERT INTO users (name, email, phone, password, role) VALUES (?, ?, ?, ?, 'patient')";
+  "INSERT INTO users (name, email, phone, password, birthdate, gender, role) VALUES (?, ?, ?, ?, ?, ?, 'patient')";
 
-        db.query(insertSql, [name, cleanEmail, phone, hashedPassword], async (err) => {
+  db.query(insertSql, [name, cleanEmail, phone, hashedPassword, birthdate, gender], async (err) => {
         if (err) {
           console.error("INSERT ERROR:", err);
           return res.status(500).json({ success: false });
@@ -135,7 +135,7 @@ router.get("/me/:id", (req, res) => {
   const { id } = req.params;
 
   const sql = `
-  SELECT id, name, email, phone, role, image
+  SELECT id, name, email, phone, role, image, birthdate, gender
   FROM users
   WHERE id = ?
 `;
